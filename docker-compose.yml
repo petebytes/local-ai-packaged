@@ -47,7 +47,7 @@ services:
     ports:
         - 3001:3001
     extra_hosts:
-      - "host.docker.internal:host-gateway"        
+      - "host.docker.internal:host-gateway"
     volumes:
         - ~/.flowise:/root/.flowise
     entrypoint: /bin/sh -c "sleep 3; flowise start"
@@ -63,6 +63,20 @@ services:
     volumes:
       - open-webui:/app/backend/data
 
+  kokoro-fastapi-gpu:
+    ports:
+      - 8880:8880
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+
   n8n-import:
     <<: *service-n8n
     container_name: n8n-import
@@ -71,7 +85,7 @@ services:
       - "-c"
       - "n8n import:credentials --separate --input=/backup/credentials && n8n import:workflow --separate --input=/backup/workflows"
     volumes:
-      - ./n8n/backup:/backup  
+      - ./n8n/backup:/backup
 
   n8n:
     <<: *service-n8n
