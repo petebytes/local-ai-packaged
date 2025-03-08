@@ -1,0 +1,13 @@
+# This is a minimal configuration file
+# Most configuration is done via command-line flags
+
+[api]
+  insecure = true
+  dashboard = true
+
+[providers.docker]
+  exposedByDefault = false
+  network = "traefik-network"
+
+[log]
+  level = "INFO"

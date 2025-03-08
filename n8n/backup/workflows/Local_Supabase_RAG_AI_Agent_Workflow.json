@@ -386,7 +386,7 @@
           "usePolling": true
         }
       },
-      "type": "n8n-nodes-base.localFileTrigger",
+      "type": "n8n-nodes-base.lanFileTrigger",
       "typeVersion": 1,
       "position": [
         620,

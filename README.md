@@ -2,11 +2,11 @@
 
 **Self-hosted AI Package** is an open, docker compose template that
 quickly bootstraps a fully featured Local AI and Low Code development
-environment including Ollama for your local LLMs, Open WebUI for an interface to chat with your N8N agents, and Supabase for your database, vector store, and authentication. 
+environment including Ollama for your local LLMs, Open WebUI for an interface to chat with your N8N agents, and Supabase for your database, vector store, and authentication. Now with HTTPS support for secure access on your local network!
 
 This is Cole's version with a couple of improvements and the addition of Supabase, Open WebUI, and Flowise!
 Postgres was also removed since Supabase runs Postgres under the hood.
-Also, the local RAG AI Agent workflow from the video will be automatically in your 
+Also, the local RAG AI Agent workflow from the video will be automatically in your
 n8n instance if you use this setup instead of the base one provided by n8n!
 
 [Original Local AI Starter Kit by the n8n team](https://github.com/n8n-io/self-hosted-ai-starter-kit)
@@ -39,6 +39,9 @@ builder that pairs very well with n8n
 ✅ [**Qdrant**](https://qdrant.tech/) - Open-source, high performance vector
 store with an comprehensive API. Even though you can use Supabase for RAG, this was
 kept unlike Postgres since it's faster than Supabase so sometimes is the better option.
+
+✅ [**Traefik**](https://traefik.io/) - Modern reverse proxy and load balancer that
+provides HTTPS support for all services using automatically generated self-signed certificates.
 
 ## Prerequisites
 
@@ -147,6 +150,117 @@ Additionally, after you see "Editor is now accessible via: http://localhost:5678
 python start_services.py --profile cpu
 ```
 
+## 🔒 HTTPS Support
+
+The starter kit now includes HTTPS support for secure access to all services on your local network using [Nginx](https://nginx.org/) as a reverse proxy.
+
+### How it works
+
+- **Nginx Reverse Proxy**: Handles HTTPS termination and routes requests to appropriate services
+- **Self-signed Certificates**: Automatically generated for local development
+- **Domain Resolution**: Uses `.lan` domains (e.g., n8n.lan, openwebui.lan)
+
+### Accessing Services via HTTPS
+
+After starting the services, you can access them securely using these URLs:
+
+- https://traefik.lan - Traefik Dashboard
+- https://n8n.lan - n8n
+- https://flowise.lan - Flowise
+- https://openwebui.lan - Open WebUI
+- https://qdrant.lan - Qdrant
+- https://ollama.lan - Ollama
+- https://kokoro.lan - Kokoro
+- https://supabase.lan - Supabase
+
+> [!NOTE]
+> Since we're using self-signed certificates, your browser will show security warnings when you first access these URLs. This is normal and expected for local development. You can safely proceed by clicking "Advanced" and then "Proceed to site" (in Chrome) or the equivalent in other browsers.
+
+### Domain Resolution Setup
+
+#### Option 1: Using Hosts File (Single Device)
+
+To use the .lan domain names on a single device, you need to add entries to your hosts file. The start script will check your hosts file and provide instructions if it needs updating. You'll need to add:
+
+```
+127.0.0.1 n8n.lan flowise.lan openwebui.lan qdrant.lan ollama.lan kokoro.lan supabase.lan traefik.lan
+```
+
+Hosts file location:
+- Windows: `C:\Windows\System32\drivers\etc\hosts`
+- Mac/Linux: `/etc/hosts`
+
+#### Option 2: Using UniFi Dream Machine Pro (Network-Wide)
+
+To make the domain names accessible across your entire network with a UniFi Dream Machine Pro:
+
+1. **Assign a Static IP to Your Docker Host**:
+   - In your UDM Pro interface, go to Settings > Networks > Local Networks > [Your Network]
+   - Under DHCP, find your Docker host machine and create a fixed IP assignment or note its current IP address
+
+2. **Add DNS Records**:
+   - Access your UDM Pro management interface (typically https://unifi.ui.com or the IP of your UDM Pro)
+   - Navigate to Settings > Networks > Advanced Features > DHCP Service Management
+   - Enable "DHCP Service"
+   - Scroll down to "DNS Records" section
+   - Add individual entries for each service:
+     ```
+     n8n.lan         [Your Docker Host IP]
+     flowise.lan     [Your Docker Host IP]
+     openwebui.lan   [Your Docker Host IP]
+     qdrant.lan      [Your Docker Host IP]
+     ollama.lan      [Your Docker Host IP]
+     kokoro.lan      [Your Docker Host IP]
+     supabase.lan    [Your Docker Host IP]
+     traefik.lan     [Your Docker Host IP]
+     ```
+
+3. **Alternative Method** (if DNS Records aren't available in the interface):
+   - SSH into your UDM Pro: `ssh root@[UDM-PRO-IP]`
+   - Edit the dnsmasq configuration:
+     ```bash
+     vi /run/dnsmasq.conf.d/custom.conf
+     ```
+   - Add the following lines (replace [DOCKER-HOST-IP] with your Docker machine's IP):
+     ```
+     address=/n8n.lan/[DOCKER-HOST-IP]
+     address=/flowise.lan/[DOCKER-HOST-IP]
+     address=/openwebui.lan/[DOCKER-HOST-IP]
+     address=/qdrant.lan/[DOCKER-HOST-IP]
+     address=/ollama.lan/[DOCKER-HOST-IP]
+     address=/kokoro.lan/[DOCKER-HOST-IP]
+     address=/supabase.lan/[DOCKER-HOST-IP]
+     address=/traefik.lan/[DOCKER-HOST-IP]
+     ```
+   - Restart the dnsmasq service:
+     ```bash
+     killall dnsmasq
+     ```
+     (The service will automatically restart)
+
+4. **Verify Configuration**:
+   - From any device on your network, try accessing https://n8n.lan
+   - If you encounter certificate warnings, this is normal with self-signed certificates
+
+### Start Script Options
+
+The `start_services.py` script accepts these parameters:
+
+```bash
+# Choose hardware acceleration profile for Ollama:
+python start_services.py --profile cpu          # Use CPU only (default)
+python start_services.py --profile gpu-nvidia   # Use NVIDIA GPU acceleration
+python start_services.py --profile gpu-amd      # Use AMD GPU acceleration on Linux
+python start_services.py --profile none         # Don't run Ollama in Docker
+
+# HTTPS-related options:
+python start_services.py --skip-certs           # Skip certificate generation
+```
+
+> [!NOTE]
+> The `--profile` parameter determines which hardware acceleration to use for Ollama (the large language model service).
+> This is unrelated to HTTPS support - the HTTPS functionality works regardless of which profile you choose.
+
 ## ⚡️ Quick start and usage
 
 The main component of the self-hosted AI starter kit is a docker compose file
@@ -160,7 +274,7 @@ to get started.
 2. Open the included workflow:
    <http://localhost:5678/workflow/vTN9y2dLXqTiDfPT>
 3. Create credentials for every service:
-   
+
    Ollama URL: http://ollama:11434
 
    Postgres (through Supabase): use DB, username, and password from .env. IMPORTANT: Host is 'db'
@@ -170,14 +284,14 @@ to get started.
 
    Google Drive: Follow [this guide from n8n](https://docs.n8n.io/integrations/builtin/credentials/google/).
    Don't use localhost for the redirect URI, just use another domain you have, it will still work!
-   Alternatively, you can set up [local file triggers](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/).
+   Alternatively, you can set up [local file triggers](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.lanfiletrigger/).
 4. Select **Test workflow** to start running the workflow.
 5. If this is the first time you’re running the workflow, you may need to wait
    until Ollama finishes downloading Llama3.1. You can inspect the docker
    console logs to check on the progress.
 6. Make sure to toggle the workflow as active and copy the "Production" webhook URL!
 7. Open <http://localhost:3000/> in your browser to set up Open WebUI.
-You’ll only have to do this once. You are NOT creating an account with Open WebUI in the 
+You’ll only have to do this once. You are NOT creating an account with Open WebUI in the
 setup here, it is only a local account for your instance!
 8. Go to Workspace -> Functions -> Add Function -> Give name + description then paste in
 the code from `n8n_pipe.py`
@@ -186,10 +300,15 @@ the code from `n8n_pipe.py`
 
 9. Click on the gear icon and set the n8n_url to the production URL for the webhook
 you copied in a previous step.
-10. Toggle the function on and now it will be available in your model dropdown in the top left! 
+10. Toggle the function on and now it will be available in your model dropdown in the top left!
 
-To open n8n at any time, visit <http://localhost:5678/> in your browser.
-To open Open WebUI at any time, visit <http://localhost:3000/>.
+To access the services:
+- **HTTP**:
+  - n8n: <http://localhost:5678/>
+  - Open WebUI: <http://localhost:3000/>
+- **HTTPS** (after setup):
+  - n8n: <https://n8n.lan>
+  - Open WebUI: <https://openwebui.lan>
 
 With your n8n instance, you’ll have access to over 400 integrations and a
 suite of basic and advanced AI nodes such as
@@ -235,6 +354,34 @@ Here are solutions to common issues you might encounter:
 - **Supabase Analytics Startup Failure**: If the supabase-analytics container fails to start after changing your Postgres password, delete the folder `supabase/docker/volumes/db/data`.
 
 - **If using Docker Desktop**: Go into the Docker settings and make sure "Expose daemon on tcp://localhost:2375 without TLS" is turned on
+
+### HTTPS and Domain Issues
+
+- **Browser Certificate Warnings**: You'll see security warnings in your browser when accessing services via HTTPS. This is normal for self-signed certificates. Click "Advanced" and then "Proceed to site" to continue.
+
+- **Domain Name Resolution**: If you can't access services using .lan domains:
+  1. Check if you've added all entries to your hosts file
+  2. Try flushing your DNS cache:
+     - Windows: Run `ipconfig /flushdns` in Command Prompt as Administrator
+     - macOS: Run `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder` in Terminal
+     - Linux: Run `sudo systemd-resolve --flush-caches` or `sudo service network-manager restart`
+
+- **Certificate Generation Errors**: If certificate generation fails:
+  1. Ensure OpenSSL is installed on your system
+  2. Run `./generate-certs.sh` manually to see detailed error messages
+  3. Create the `./certs` directory manually if needed
+
+- **Nginx Configuration Issues**: If you encounter Nginx configuration errors:
+  1. Check that the certificates exist in the `./certs` directory
+  2. Verify the nginx.conf file is correctly mounted
+  3. You can check Nginx logs with:
+     ```bash
+     docker logs nginx
+     ```
+  4. Restart the Nginx container if needed:
+     ```bash
+     docker compose -p localai restart nginx
+     ```
 
 ### GPU Support Issues
 
@@ -296,7 +443,7 @@ interact with the local filesystem.
 **Nodes that interact with the local filesystem**
 
 - [Read/Write Files from Disk](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filesreadwrite/)
-- [Local File Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/)
+- [Local File Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.lanfiletrigger/)
 - [Execute Command](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/)
 
 ## 📜 License
