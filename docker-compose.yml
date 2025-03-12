@@ -98,7 +98,7 @@ services:
   kokoro-fastapi-gpu:
     expose:
       - 8880
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.2
     restart: always
     networks:
       - localai_default
