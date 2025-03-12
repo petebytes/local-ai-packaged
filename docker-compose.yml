@@ -4,6 +4,7 @@ volumes:
   open-webui:
   flowise:
   traefik-certs:
+  nocodb:
 
 networks:
   localai_default:
@@ -63,6 +64,7 @@ services:
       - open-webui
       - qdrant
       - kokoro-fastapi-gpu
+      - nocodb
 
   flowise:
     image: flowiseai/flowise
@@ -147,6 +149,22 @@ services:
       - localai_default
     volumes:
       - qdrant_storage:/qdrant/storage
+
+  nocodb:
+    image: nocodb/nocodb:latest
+    container_name: nocodb
+    restart: unless-stopped
+    expose:
+      - 8080
+    networks:
+      - localai_default
+    volumes:
+      - nocodb:/usr/app/data/
+    environment:
+      - NC_DB=pg://db:5432?u=postgres&p=${POSTGRES_PASSWORD}&d=postgres
+      - NC_AUTH_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+    depends_on:
+      - n8n
 
   # ollama-cpu:
   #   profiles: ["cpu"]

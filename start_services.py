@@ -84,7 +84,7 @@ def update_hosts_file():
     """Update hosts file with local domain entries."""
     hosts_entries = [
         "n8n.lan", "flowise.lan", "openwebui.lan", "qdrant.lan",
-        "ollama.lan", "kokoro.lan", "supabase.lan", "traefik.lan"
+        "kokoro.lan", "supabase.lan", "traefik.lan"
     ]
 
     # Determine hosts file location based on OS
@@ -232,7 +232,6 @@ def main():
     print("- https://flowise.lan - Flowise")
     print("- https://openwebui.lan - Open WebUI")
     print("- https://qdrant.lan - Qdrant")
-    print("- https://ollama.lan - Ollama")
     print("- https://kokoro.lan - Kokoro")
     print("- https://supabase.lan - Supabase")
     print("\nNote: You may need to accept browser security warnings for self-signed certificates")
