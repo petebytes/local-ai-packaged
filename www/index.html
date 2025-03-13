@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local AI Services Directory</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            color: var(--accent);
+        }
+
+        .overall-status {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 1rem;
+            background-color: var(--bg-secondary);
+            border-radius: 0.5rem;
+        }
+
+        .status-count {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .section {
+            background-color: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        .service-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .service-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .service-card h3 {
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .service-card p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .service-card a {
+            display: inline-block;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .service-card a:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            background-color: var(--text-secondary);
+            color: white;
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-online {
+            background-color: var(--success);
+        }
+
+        .status-offline {
+            background-color: var(--error);
+        }
+
+        .status-unknown {
+            background-color: var(--warning);
+        }
+
+        .service-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Local AI Services Directory</h1>
+        <div class="overall-status">
+            <div class="status-count">
+                Service Status:
+                <span class="status-label">
+                    <span class="status-dot status-online"></span>
+                    <span id="online-count">0</span> Online
+                </span>
+                <span class="status-label" style="margin-left: 1rem;">
+                    <span class="status-dot status-offline"></span>
+                    <span id="offline-count">0</span> Offline
+                </span>
+                <span class="status-label" style="margin-left: 1rem;">
+                    <span class="status-dot status-unknown"></span>
+                    <span id="unknown-count">0</span> Unknown
+                </span>
+            </div>
+            <div style="margin-top: 0.5rem;">
+                Total Services: <span id="total-count">0</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>User Interfaces</h2>
+            <div class="services-grid">
+                <div class="service-card" data-url="https://openwebui.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            Open WebUI
+                        </h3>
+                    </div>
+                    <p>Modern chat interface for interacting with AI models. Includes text-to-speech capabilities.</p>
+                    <a href="https://openwebui.lan" target="_blank">Access Open WebUI</a>
+                    <div class="status">Port 8080</div>
+                </div>
+
+                <div class="service-card" data-url="https://n8n.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            n8n
+                        </h3>
+                    </div>
+                    <p>Powerful workflow automation platform for connecting and automating various services and APIs.</p>
+                    <a href="https://n8n.lan" target="_blank">Access n8n</a>
+                    <div class="status">Port 5678</div>
+                </div>
+
+                <div class="service-card" data-url="https://nocodb.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            NocoDB
+                        </h3>
+                    </div>
+                    <p>Open source Airtable alternative - spreadsheet interface for database management.</p>
+                    <a href="https://nocodb.lan" target="_blank">Access NocoDB</a>
+                    <div class="status">Port 8080</div>
+                </div>
+
+                <div class="service-card" data-url="https://flowise.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            Flowise
+                        </h3>
+                    </div>
+                    <p>Visual flow builder for creating AI applications with a drag-and-drop interface.</p>
+                    <a href="https://flowise.lan" target="_blank">Access Flowise</a>
+                    <div class="status">Port 3001</div>
+                </div>
+
+                <div class="service-card" data-url="https://supabase.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            Supabase Studio
+                        </h3>
+                    </div>
+                    <p>Modern database management interface for PostgreSQL with built-in auth and realtime subscriptions.</p>
+                    <a href="https://supabase.lan" target="_blank">Access Supabase Studio</a>
+                    <div class="status">Port 3000</div>
+                </div>
+
+                <div class="service-card" data-url="https://kokoro.lan">
+                    <div class="service-info">
+                        <h3>
+                            <span class="status-dot status-unknown"></span>
+                            Kokoro Web UI
+                        </h3>
+                    </div>
+                    <p>Web interface for managing and monitoring the Kokoro text-to-speech service.</p>
+                    <a href="https://kokoro.lan/web/" target="_blank">Access Kokoro UI</a>
+                    <div class="status">Port 8880</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Backend Services</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Kokoro FastAPI GPU
+                    </h3>
+                    <p>Text-to-Speech service utilizing GPU acceleration for high-quality voice synthesis.</p>
+                    <div class="status">Port 8880</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Qdrant
+                    </h3>
+                    <p>Vector similarity search engine for efficient retrieval of embeddings and semantic search.</p>
+                    <div class="status">Port 6333</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Auth
+                    </h3>
+                    <p>Authentication service supporting multiple providers and row level security.</p>
+                    <div class="status">API Gateway</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase REST
+                    </h3>
+                    <p>Auto-generated REST API for your PostgreSQL database.</p>
+                    <div class="status">Port 3000</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Realtime
+                    </h3>
+                    <p>Listen to your PostgreSQL database changes in realtime via websockets.</p>
+                    <div class="status">Websocket</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Infrastructure Services</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        NGINX
+                    </h3>
+                    <p>Reverse proxy handling SSL termination and routing requests to appropriate services.</p>
+                    <div class="status">Ports 80, 443</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Kong
+                    </h3>
+                    <p>API Gateway managing routes and authentication for Supabase services.</p>
+                    <div class="status">Ports 8000, 8443</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Edge Functions
+                    </h3>
+                    <p>Serverless functions runtime for custom backend logic.</p>
+                    <div class="status">Via Kong Gateway</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Storage
+                    </h3>
+                    <p>Object storage service for files and media.</p>
+                    <div class="status">Port 5000</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Vector
+                    </h3>
+                    <p>Log aggregation and processing service.</p>
+                    <div class="status">Internal Service</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Analytics
+                    </h3>
+                    <p>Log analytics and visualization platform (Logflare).</p>
+                    <div class="status">Port 4000</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Image Proxy
+                    </h3>
+                    <p>Image processing and transformation service.</p>
+                    <div class="status">Port 8080</div>
+                </div>
+
+                <div class="service-card">
+                    <h3>
+                        <span class="status-dot status-unknown"></span>
+                        Supabase Database
+                    </h3>
+                    <p>PostgreSQL database with extensions for auth, realtime, and more.</p>
+                    <div class="status">Port 5432</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateStatusCount() {
+            const allDots = Array.from(document.querySelectorAll('.status-dot'));
+            const onlineCount = allDots.filter(dot => dot.classList.contains('status-online')).length;
+            const offlineCount = allDots.filter(dot => dot.classList.contains('status-offline')).length;
+            const unknownCount = allDots.filter(dot => dot.classList.contains('status-unknown')).length;
+
+            document.getElementById('online-count').textContent = onlineCount;
+            document.getElementById('offline-count').textContent = offlineCount;
+            document.getElementById('unknown-count').textContent = unknownCount;
+            document.getElementById('total-count').textContent = allDots.length;
+
+            // Debug output to verify counts
+            console.log(`Online: ${onlineCount}, Offline: ${offlineCount}, Unknown: ${unknownCount}, Total: ${allDots.length}`);
+        }
+
+        async function checkServiceStatus(url) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch(url, {
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                // Any response (including redirects and security prompts) means the service is up
+                return true;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return false; // Timeout means service is down
+                }
+                // Consider all other errors (CORS, SSL, auth) as the service being online
+                // since they indicate the server is responding, just with security measures
+                return true;
+            }
+        }
+
+        async function updateServiceStatuses() {
+            const serviceCards = document.querySelectorAll('.service-card');
+
+            for (const card of serviceCards) {
+                const statusDot = card.querySelector('.status-dot');
+                const url = card.dataset.url;
+
+                if (url) {
+                    try {
+                        const isOnline = await checkServiceStatus(url);
+                        statusDot.className = `status-dot ${isOnline ? 'status-online' : 'status-offline'}`;
+                    } catch (error) {
+                        statusDot.className = 'status-dot status-offline';
+                    }
+                } else {
+                    statusDot.className = 'status-dot status-unknown';
+                }
+            }
+
+            updateStatusCount();
+        }
+
+        // Initial status check
+        updateServiceStatuses();
+
+        // Check statuses every 30 seconds
+        setInterval(updateServiceStatuses, 30000);
+    </script>
+</body>
+</html>
