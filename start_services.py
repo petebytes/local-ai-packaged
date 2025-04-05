@@ -83,8 +83,7 @@ def generate_certificates():
 def update_hosts_file():
     """Update hosts file with local domain entries."""
     hosts_entries = [
-        "n8n.lan", "flowise.lan", "openwebui.lan", "qdrant.lan",
-        "kokoro.lan", "supabase.lan", "traefik.lan"
+        "n8n.lan", "openwebui.lan", "kokoro.lan", "supabase.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan"
     ]
 
     # Determine hosts file location based on OS
@@ -241,11 +240,10 @@ def main():
     print("Your services are now available via HTTPS at:")
     print("- https://traefik.lan - Traefik Dashboard")
     print("- https://n8n.lan - n8n")
-    print("- https://flowise.lan - Flowise")
     print("- https://openwebui.lan - Open WebUI")
-    print("- https://qdrant.lan - Qdrant")
     print("- https://kokoro.lan - Kokoro")
     print("- https://supabase.lan - Supabase")
+    print("- https://studio.lan - Supabase Studio")
     print("\nNote: You may need to accept browser security warnings for self-signed certificates")
     print("==============================")
 

@@ -1,11 +1,7 @@
 volumes:
   n8n_storage:
     driver: local
-  qdrant_storage:
-    driver: local
   open-webui:
-    driver: local
-  flowise_storage:
     driver: local
   traefik-certs:
     driver: local
@@ -35,26 +31,6 @@ x-n8n: &service-n8n
     - N8N_ENCRYPTION_KEY
     - N8N_USER_MANAGEMENT_JWT_SECRET
 
-# x-ollama: &service-ollama
-#   image: ollama/ollama:latest
-#   container_name: ollama
-#   restart: unless-stopped
-#   expose:
-#     - 11434
-#   networks:
-#     - localai_default
-#   volumes:
-#     - ollama_storage:/root/.ollama
-
-# x-init-ollama: &init-ollama
-#   image: ollama/ollama:latest
-#   container_name: ollama-pull-llama
-#   volumes:
-#     - ollama_storage:/root/.ollama
-#   entrypoint: /bin/sh
-#   command:
-#     - "-c"
-#     - "sleep 3; OLLAMA_HOST=ollama:11434 ollama pull qwen2.5:7b-instruct-q4_K_M; OLLAMA_HOST=ollama:11434 ollama pull nomic-embed-text"
 
 services:
   nginx:
@@ -72,27 +48,10 @@ services:
       - localai_default
     depends_on:
       - n8n
-      - flowise
       - open-webui
-      - qdrant
       - kokoro-fastapi-gpu
       - nocodb
-
-  flowise:
-    image: flowiseai/flowise
-    restart: unless-stopped
-    container_name: flowise
-    environment:
-        - PORT=3001
-    expose:
-        - 3001
-    networks:
-        - localai_default
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-        - flowise_storage:/root/.flowise
-    entrypoint: /bin/sh -c "sleep 3; flowise start"
+      - crawl4ai
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -125,6 +84,33 @@ services:
               capabilities:
                 - gpu
 
+  crawl4ai:
+    image: crawl4ai:latest # Assumes a local image named 'crawl4ai' is built
+    container_name: crawl4ai
+    restart: unless-stopped
+    expose:
+      - 8000 # Expose port internally for nginx proxy
+    networks:
+      - localai_default
+    environment:
+      # Define API keys in your .env file or uncomment and set here
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      # Ensure the server runs on 0.0.0.0 to be accessible within the network
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+    # volumes:
+    #   - ./crawl4ai/custom-config.yml:/app/config.yml # Optional: Mount custom config if needed
+    #   - ./crawl4ai/.llm.env:/.llm.env # Optional: Mount env file directly
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all # Utilize all available GPUs
+              capabilities: [gpu]
+
   n8n-import:
     <<: *service-n8n
     container_name: n8n-import
@@ -152,17 +138,6 @@ services:
     depends_on:
       - n8n-import
 
-  qdrant:
-    image: qdrant/qdrant
-    container_name: qdrant
-    restart: unless-stopped
-    expose:
-      - 6333
-    networks:
-      - localai_default
-    volumes:
-      - qdrant_storage:/qdrant/storage
-
   nocodb:
     image: nocodb/nocodb:latest
     container_name: nocodb
@@ -187,9 +162,7 @@ services:
     volumes:
       - backup_data:/backup
       - n8n_storage:/backup-src/n8n:ro
-      - qdrant_storage:/backup-src/qdrant:ro
       - open-webui:/backup-src/open-webui:ro
-      - flowise_storage:/backup-src/flowise:ro
       - nocodb:/backup-src/nocodb:ro
     environment:
       - BACKUP_CRON_EXPRESSION=0 0 * * * # Every day at midnight
@@ -227,45 +200,3 @@ services:
         . /venv/bin/activate &&
         pip install --no-cache-dir flask flask-cors &&
         python /app.py"
-
-  # ollama-cpu:
-  #   profiles: ["cpu"]
-  #   <<: *service-ollama
-
-  # ollama-gpu:
-  #   profiles: ["gpu-nvidia"]
-  #   <<: *service-ollama
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-
-  # ollama-gpu-amd:
-  #   profiles: ["gpu-amd"]
-  #   <<: *service-ollama
-  #   image: ollama/ollama:rocm
-  #   devices:
-  #     - "/dev/kfd"
-  #     - "/dev/dri"
-
-  # ollama-pull-llama-cpu:
-  #   profiles: ["cpu"]
-  #   <<: *init-ollama
-  #   depends_on:
-  #     - ollama-cpu
-
-  # ollama-pull-llama-gpu:
-  #   profiles: ["gpu-nvidia"]
-  #   <<: *init-ollama
-  #   depends_on:
-  #     - ollama-gpu
-
-  # ollama-pull-llama-gpu-amd:
-  #   profiles: [gpu-amd]
-  #   <<: *init-ollama
-  #   image: ollama/ollama:rocm
-  #   depends_on:
-  #    - ollama-gpu-amd
