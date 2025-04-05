@@ -196,6 +196,15 @@ def start_local_ai(profile=None):
     # Fix the Read Aloud feature in Open WebUI
     fix_open_webui_read_aloud()
 
+def start_comfyui():
+    """Start the ComfyUI service."""
+    print("Starting ComfyUI service...")
+    try:
+        run_command(["python", "main.py"], cwd="ComfyUI")
+    except subprocess.CalledProcessError as e:
+        print(f"Error starting ComfyUI: {e}")
+        print("Please ensure ComfyUI is properly installed.")
+
 def main():
     parser = argparse.ArgumentParser(description='Start the local AI and Supabase services.')
     parser.add_argument('--profile', choices=['cpu', 'gpu-nvidia', 'gpu-amd', 'none'], default='cpu',
@@ -224,6 +233,9 @@ def main():
 
     # Then start the local AI services
     start_local_ai(args.profile)
+
+    # Start ComfyUI service
+    start_comfyui()
 
     print("\n===== HTTPS SETUP COMPLETE =====")
     print("Your services are now available via HTTPS at:")

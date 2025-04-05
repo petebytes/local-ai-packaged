@@ -1,10 +1,20 @@
 volumes:
   n8n_storage:
+    driver: local
   qdrant_storage:
+    driver: local
   open-webui:
-  flowise:
+    driver: local
+  flowise_storage:
+    driver: local
   traefik-certs:
+    driver: local
   nocodb:
+    driver: local
+  postgres_data:
+    driver: local
+  backup_data:
+    driver: local
 
 networks:
   localai_default:
@@ -15,10 +25,11 @@ x-n8n: &service-n8n
   image: n8nio/n8n:latest
   environment:
     - DB_TYPE=postgresdb
-    - DB_POSTGRESDB_HOST=db
+    - DB_POSTGRESDB_HOST=${POSTGRES_HOST}
+    - DB_POSTGRESDB_PORT=${POSTGRES_PORT}
     - DB_POSTGRESDB_USER=postgres
     - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-    - DB_POSTGRESDB_DATABASE=postgres
+    - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
     - N8N_DIAGNOSTICS_ENABLED=false
     - N8N_PERSONALIZATION_ENABLED=false
     - N8N_ENCRYPTION_KEY
@@ -80,7 +91,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-        - ~/.flowise:/root/.flowise
+        - flowise_storage:/root/.flowise
     entrypoint: /bin/sh -c "sleep 3; flowise start"
 
   open-webui:
@@ -136,9 +147,10 @@ services:
       - n8n_storage:/home/node/.n8n
       - ./n8n/backup:/backup
       - ./shared:/data/shared
+    environment:
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
     depends_on:
-      n8n-import:
-        condition: service_completed_successfully
+      - n8n-import
 
   qdrant:
     image: qdrant/qdrant
@@ -162,10 +174,59 @@ services:
     volumes:
       - nocodb:/usr/app/data/
     environment:
-      - NC_DB=pg://db:5432?u=postgres&p=${POSTGRES_PASSWORD}&d=postgres
+      - NC_DB=pg://${POSTGRES_HOST}:${POSTGRES_PORT}?u=postgres&p=${POSTGRES_PASSWORD}&d=${POSTGRES_DB}
       - NC_AUTH_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
     depends_on:
       - n8n
+
+  backup:
+    image: offen/docker-volume-backup:v2
+    container_name: backup
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - backup_data:/backup
+      - n8n_storage:/backup-src/n8n:ro
+      - qdrant_storage:/backup-src/qdrant:ro
+      - open-webui:/backup-src/open-webui:ro
+      - flowise_storage:/backup-src/flowise:ro
+      - nocodb:/backup-src/nocodb:ro
+    environment:
+      - BACKUP_CRON_EXPRESSION=0 0 * * * # Every day at midnight
+      - BACKUP_FILENAME=backup-%Y-%m-%d-%H-%M-%S.tar.gz
+      - BACKUP_RETENTION_DAYS=7
+      - BACKUP_COMPRESSION_LEVEL=9
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - BACKUP_POSTGRES_ENABLED=true
+      - BACKUP_STOP_CONTAINERS=false
+      - BACKUP_DELETE_ONLY_IF_NEW_BACKUP_PRESENT=true
+      - TZ=UTC
+    networks:
+      - localai_default
+
+  service-status:
+    image: alpine:latest
+    container_name: service-status
+    restart: unless-stopped
+    volumes:
+      - backup_data:/backup:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./service-status.py:/app.py:ro
+    networks:
+      - localai_default
+    expose:
+      - 80
+    command: >
+      /bin/sh -c "
+        apk add --no-cache python3 py3-pip curl jq &&
+        python3 -m venv /venv &&
+        . /venv/bin/activate &&
+        pip install --no-cache-dir flask flask-cors &&
+        python /app.py"
 
   # ollama-cpu:
   #   profiles: ["cpu"]

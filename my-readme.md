@@ -17,3 +17,13 @@ The open-source Airtable alternative is available at http://localhost/nocodb/das
 - Initial setup will require creating an admin account
 - Uses PostgreSQL as the database backend
 - Shares JWT secret with N8N for authentication
+
+
+To update all containers to their latest versions (n8n, Open WebUI, etc.), run these commands:
+
+```bash
+# Stop all services
+docker compose -p localai -f docker-compose.yml -f supabase/docker/docker-compose.yml down
+
+# Pull latest versions of all containers
+docker compose -p localai -f docker-compose.yml -f supabase/docker/docker-compose.yml pull
