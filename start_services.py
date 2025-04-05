@@ -83,7 +83,7 @@ def generate_certificates():
 def update_hosts_file():
     """Update hosts file with local domain entries."""
     hosts_entries = [
-        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan"
+        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan", "supabase.lan"
     ]
 
     # Determine hosts file location based on OS

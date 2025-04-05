@@ -100,6 +100,7 @@ services:
       # Ensure the server runs on 0.0.0.0 to be accessible within the network
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
+      - CRAWL4AI_API_KEY=${CRAWL4AI_API_KEY:-}
     # volumes:
     #   - ./crawl4ai/custom-config.yml:/app/config.yml # Optional: Mount custom config if needed
     #   - ./crawl4ai/.llm.env:/.llm.env # Optional: Mount env file directly
