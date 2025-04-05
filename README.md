@@ -166,12 +166,11 @@ After starting the services, you can access them securely using these URLs:
 
 - https://traefik.lan - Traefik Dashboard
 - https://n8n.lan - n8n
-- https://flowise.lan - Flowise
 - https://openwebui.lan - Open WebUI
-- https://qdrant.lan - Qdrant
 - https://ollama.lan - Ollama
 - https://kokoro.lan - Kokoro
 - https://supabase.lan - Supabase
+- https://studio.lan - Supabase Studio
 
 > [!NOTE]
 > Since we're using self-signed certificates, your browser will show security warnings when you first access these URLs. This is normal and expected for local development. You can safely proceed by clicking "Advanced" and then "Proceed to site" (in Chrome) or the equivalent in other browsers.
