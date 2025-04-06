@@ -71,8 +71,8 @@ def generate_certificates():
         os.makedirs("certs", exist_ok=True)
         run_command([
             "openssl", "req", "-x509", "-nodes", "-days", "365", "-newkey", "rsa:2048",
-            "-keyout", "certs/local-key.pem",
-            "-out", "certs/local-cert.pem",
+            "-keyout", "nginx/certs/local-key.pem",
+            "-out", "nginx/certs/local-cert.pem",
             "-subj", "/CN=*.lan",
             "-addext", "subjectAltName = DNS:*.lan,DNS:localhost"
         ])
