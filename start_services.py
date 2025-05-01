@@ -199,7 +199,7 @@ def start_comfyui():
     """Start the ComfyUI service."""
     print("Starting ComfyUI service...")
     try:
-        run_command(["python", "main.py"], cwd="ComfyUI")
+        run_command(["python", "main.py", "--highvram"], cwd="ComfyUI")
     except subprocess.CalledProcessError as e:
         print(f"Error starting ComfyUI: {e}")
         print("Please ensure ComfyUI is properly installed.")

@@ -11,6 +11,8 @@ volumes:
     driver: local
   backup_data:
     driver: local
+  n8n-certs:
+    driver: local
 
 networks:
   localai_default:
@@ -85,9 +87,11 @@ services:
                 - gpu
 
   crawl4ai:
+    # image: unclecode/crawl4ai:basic
     image: crawl4ai:latest # Assumes a local image named 'crawl4ai' is built
     container_name: crawl4ai
     restart: unless-stopped
+    pull_policy: never # Don't attempt to pull this image from a remote registry
     expose:
       - 8000 # Expose port internally for nginx proxy
     networks:
@@ -112,15 +116,25 @@ services:
               count: all # Utilize all available GPUs
               capabilities: [gpu]
 
-  n8n-import:
-    <<: *service-n8n
-    container_name: n8n-import
-    entrypoint: /bin/sh
-    command:
-      - "-c"
-      - "n8n import:credentials --separate --input=/backup/credentials && n8n import:workflow --separate --input=/backup/workflows"
+  # n8n-import:
+  #   <<: *service-n8n
+  #   container_name: n8n-import
+  #   entrypoint: /bin/sh
+  #   command:
+  #     - "-c"
+  #     - "n8n import:credentials --separate --input=/backup/credentials && n8n import:workflow --separate --input=/backup/workflows"
+  #   volumes:
+  #     - ./n8n/backup:/backup
+
+  n8n-cert-init:
+    image: alpine:latest
+    container_name: n8n-cert-init
     volumes:
-      - ./n8n/backup:/backup
+      - ./certs:/certs-src:ro
+      - n8n-certs:/certs-dest
+    command: sh -c "cp -v /certs-src/* /certs-dest/ && chown -R 1000:1000 /certs-dest && echo 'Certs copied and permissions set.'"
+    # This container runs once and exits
+
 
   n8n:
     <<: *service-n8n
@@ -134,10 +148,15 @@ services:
       - n8n_storage:/home/node/.n8n
       - ./n8n/backup:/backup
       - ./shared:/data/shared
+      - n8n-certs:/opt/custom-certificates:ro # Mount the prepared named volume
     environment:
       - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - NODE_EXTRA_CA_CERTS=/opt/custom-certificates/local-cert.pem
     depends_on:
-      - n8n-import
+      - n8n-cert-init # Ensure certs are ready before n8n starts
+
+    # depends_on:
+    #   - n8n-import
 
   nocodb:
     image: nocodb/nocodb:latest
