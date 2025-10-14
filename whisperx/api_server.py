@@ -10,12 +10,11 @@ import gc
 import torch
 import whisperx
 import uvicorn
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import JSONResponse
-from typing import Optional, List
+from typing import Optional
 from pathlib import Path
 import logging
-import asyncio
 import time
 
 # Import our custom modules
@@ -500,7 +499,6 @@ async def process_video(
 
         # Create a mock UploadFile for internal processing
         with open(temp_audio, "rb") as audio_file:
-            from io import BytesIO
             audio_content = audio_file.read()
 
             # Process through large file transcription

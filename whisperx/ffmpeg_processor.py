@@ -8,7 +8,7 @@ import subprocess
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Tuple
+from typing import Dict
 import json
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class FFmpegProcessor:
     def _verify_ffmpeg(self):
         """Verify FFmpeg is installed and accessible."""
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ['ffmpeg', '-version'],
                 capture_output=True,
                 text=True,
@@ -168,7 +168,7 @@ class FFmpegProcessor:
         ])
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
@@ -271,7 +271,7 @@ class FFmpegProcessor:
 
         try:
             logger.info(f"Segmenting video into {segment_duration}s chunks")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
 
             # Find all created segments
             segments = sorted([
@@ -348,7 +348,7 @@ class FFmpegProcessor:
         ])
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
             logger.info(f"Subtitles burned successfully to {output_path}")
             return output_path
         except subprocess.CalledProcessError as e:

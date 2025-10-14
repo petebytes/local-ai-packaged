@@ -10,9 +10,7 @@ Based on 2025 best practices:
 """
 
 import logging
-import os
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Tuple, Optional
 import torch
 import numpy as np
 
@@ -260,8 +258,8 @@ class VideoSegmenter:
             # For audio files, use ffprobe directly on the audio
             info = processor.get_video_info(audio_path)
             duration = info.get('duration', 0)
-        except:
-            logger.error("Could not determine audio duration")
+        except Exception as e:
+            logger.error(f"Could not determine audio duration: {e}")
             return []
 
         chunks = []
