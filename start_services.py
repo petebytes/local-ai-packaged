@@ -13,7 +13,7 @@ import shutil
 import time
 import argparse
 import platform
-import sys
+import socket
 
 def run_command(cmd, cwd=None):
     """Run a shell command and print it."""
@@ -80,10 +80,30 @@ def generate_certificates():
     else:
         print("Certificates already exist.")
 
-def update_hosts_file():
+def get_primary_ip():
+    """Get the primary network IP address of this machine."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        if platform.system() != "Windows":
+            try:
+                result = subprocess.run(["hostname", "-I"], capture_output=True, text=True)
+                ips = result.stdout.strip().split()
+                for ip in ips:
+                    if not ip.startswith("127.") and not ip.startswith("172.17.") and not ip.startswith("172.18."):
+                        return ip
+            except (subprocess.CalledProcessError, OSError):
+                pass
+        return None
+
+def update_hosts_file(network_access=False):
     """Update hosts file with local domain entries."""
     hosts_entries = [
-        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan", "supabase.lan"
+        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan", "supabase.lan", "nocodb.lan", "raven.lan", "ollama.lan", "wan.lan", "whisper.lan", "infinitetalk.lan"
     ]
 
     # Determine hosts file location based on OS
@@ -103,7 +123,15 @@ def update_hosts_file():
                 break
 
         if need_update:
-            entries_line = "127.0.0.1 " + " ".join(hosts_entries)
+            if network_access:
+                ip_address = get_primary_ip()
+                if not ip_address:
+                    print("Warning: Could not determine network IP. Using localhost.")
+                    ip_address = "127.0.0.1"
+            else:
+                ip_address = "127.0.0.1"
+
+            entries_line = f"{ip_address} " + " ".join(hosts_entries)
             print("\n===== HOSTS FILE UPDATE NEEDED =====")
             print(f"Please update your hosts file ({hosts_file}) to include:")
             print(entries_line)
@@ -195,21 +223,14 @@ def start_local_ai(profile=None):
     # Fix the Read Aloud feature in Open WebUI
     fix_open_webui_read_aloud()
 
-def start_comfyui():
-    """Start the ComfyUI service."""
-    print("Starting ComfyUI service...")
-    try:
-        run_command(["python", "main.py", "--highvram"], cwd="ComfyUI")
-    except subprocess.CalledProcessError as e:
-        print(f"Error starting ComfyUI: {e}")
-        print("Please ensure ComfyUI is properly installed.")
-
 def main():
     parser = argparse.ArgumentParser(description='Start the local AI and Supabase services.')
     parser.add_argument('--profile', choices=['cpu', 'gpu-nvidia', 'gpu-amd', 'none'], default='cpu',
                       help='Profile to use for Docker Compose (default: cpu)')
     parser.add_argument('--skip-certs', action='store_true',
                       help='Skip certificate generation')
+    parser.add_argument('--network-access', action='store_true',
+                      help='Configure for network access from other computers')
     args = parser.parse_args()
 
     # Generate HTTPS certificates if needed
@@ -217,7 +238,15 @@ def main():
         generate_certificates()
 
     # Update hosts file for local domains
-    update_hosts_file()
+    update_hosts_file(network_access=args.network_access)
+
+    # If network access is requested, show additional instructions
+    if args.network_access:
+        print("\n===== NETWORK ACCESS CONFIGURATION =====")
+        print("To access services from other computers on your network:")
+        print("1. Run: python configure_network_access.py")
+        print("2. Follow the instructions to configure client machines")
+        print("========================================\n")
 
     clone_supabase_repo()
     prepare_supabase_env()
@@ -233,16 +262,28 @@ def main():
     # Then start the local AI services
     start_local_ai(args.profile)
 
-    # Start ComfyUI service
-    start_comfyui()
-
     print("\n===== HTTPS SETUP COMPLETE =====")
     print("Your services are now available via HTTPS at:")
-    print("- https://traefik.lan - Traefik Dashboard")
+    print("- https://raven.lan - Main Dashboard")
     print("- https://n8n.lan - n8n")
     print("- https://openwebui.lan - Open WebUI")
-    print("- https://kokoro.lan - Kokoro")
     print("- https://studio.lan - Supabase Studio")
+    print("- https://kokoro.lan - Kokoro TTS")
+    print("- https://comfyui.lan - ComfyUI")
+    print("- https://wan.lan - Wan")
+    print("- https://crawl4ai.lan - Crawl4AI")
+    print("- https://nocodb.lan - NocoDB")
+    print("- https://whisper.lan - WhisperX Transcription")
+    print("- https://infinitetalk.lan - InfiniteTalk Video Generation")
+    print("- https://ollama.lan - Ollama")
+    print("- https://traefik.lan - Status Page")
+
+    if args.network_access:
+        ip_address = get_primary_ip()
+        if ip_address:
+            print(f"\n** Network Access Enabled: Services accessible from {ip_address} **")
+            print("Run 'python configure_network_access.py' for client setup instructions")
+
     print("\nNote: You may need to accept browser security warnings for self-signed certificates")
     print("==============================")
 
