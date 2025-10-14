@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Videos from NAS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9ff;
+            white-space: normal;
+            overflow: visible;
+        }
+
+        select option {
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #764ba2;
+            background-color: #f0f1ff;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Process Videos from NAS</h1>
+
+        <button class="refresh-btn" id="refreshBtn" onclick="loadVideoList()">
+            Refresh Video List
+        </button>
+
+        <form id="processForm">
+            <div class="form-group">
+                <label for="videoSelect">Select a Video to Process</label>
+                <select id="videoSelect" name="video" required>
+                    <option value="">-- Select a video --</option>
+                </select>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+            <button type="submit" id="submitBtn">Process Video</button>
+        </form>
+
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        const videoSelect = document.getElementById('videoSelect');
+        const fileInfo = document.getElementById('fileInfo');
+        const submitBtn = document.getElementById('submitBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const message = document.getElementById('message');
+        const form = document.getElementById('processForm');
+
+        // Load video list on page load
+        loadVideoList();
+
+        // Update file info when selection changes
+        videoSelect.addEventListener('change', function() {
+            const selectedOption = videoSelect.options[videoSelect.selectedIndex];
+            if (selectedOption.value) {
+                const size = selectedOption.dataset.size;
+                fileInfo.textContent = `Size: ${size}`;
+            } else {
+                fileInfo.textContent = '';
+            }
+        });
+
+        // Load available videos from NAS
+        async function loadVideoList() {
+            refreshBtn.disabled = true;
+            videoSelect.innerHTML = '<option value="">Loading...</option>';
+            message.style.display = 'none';
+
+            try {
+                const response = await fetch('https://n8n.lan/webhook/list-videos', {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load video list');
+                }
+
+                const data = await response.json();
+
+                // Clear and populate select
+                videoSelect.innerHTML = '<option value="">-- Select a video --</option>';
+
+                if (data.videos && data.videos.length > 0) {
+                    data.videos.forEach(video => {
+                        const option = document.createElement('option');
+                        option.value = video.filepath;
+                        option.textContent = video.filename;
+                        option.dataset.size = video.size;
+                        videoSelect.appendChild(option);
+                    });
+                } else {
+                    videoSelect.innerHTML = '<option value="">No videos found</option>';
+                    showMessage('No videos found in the NAS directory', 'info');
+                }
+            } catch (error) {
+                videoSelect.innerHTML = '<option value="">Error loading videos</option>';
+                showMessage('Failed to load video list: ' + error.message, 'error');
+            } finally {
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const filepath = videoSelect.value;
+            if (!filepath) {
+                showMessage('Please select a video', 'error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            message.style.display = 'none';
+
+            try {
+                const response = await fetch('https://n8n.lan/webhook/process-video-file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filepath: filepath
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showMessage('Video processing started successfully! Check your processed folder for results.', 'success');
+                    form.reset();
+                    fileInfo.textContent = '';
+                } else {
+                    const error = await response.json();
+                    showMessage('Processing failed: ' + (error.message || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showMessage('An error occurred: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = 'message ' + type;
+            message.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+s
