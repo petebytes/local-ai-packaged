@@ -13,6 +13,8 @@ volumes:
     driver: local
   n8n-certs:
     driver: local
+  whisperx-cache:
+    driver: local
 
 networks:
   localai_default:
@@ -20,7 +22,9 @@ networks:
     external: true
 
 x-n8n: &service-n8n
-  image: n8nio/n8n:latest
+  build:
+    context: ./n8n-custom
+    dockerfile: Dockerfile
   environment:
     - DB_TYPE=postgresdb
     - DB_POSTGRESDB_HOST=${POSTGRES_HOST}
@@ -54,6 +58,9 @@ services:
       - kokoro-fastapi-gpu
       - nocodb
       - crawl4ai
+      - whisperx
+      - comfyui
+      - infinitetalk
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -116,6 +123,76 @@ services:
               count: all # Utilize all available GPUs
               capabilities: [gpu]
 
+  whisperx:
+    build:
+      context: ./whisperx
+      dockerfile: Dockerfile
+    container_name: whisperx
+    restart: unless-stopped
+    expose:
+      - 8000
+    networks:
+      - localai_default
+    volumes:
+      - whisperx-cache:/root/.cache
+      - ./shared:/app/shared
+    environment:
+      - COMPUTE_TYPE=float16
+      - BATCH_SIZE=16
+      - HF_TOKEN=${HF_TOKEN:-}
+      - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  comfyui:
+    image: ghcr.io/ai-dock/comfyui:latest
+    container_name: comfyui
+    restart: unless-stopped
+    expose:
+      - 8188
+    networks:
+      - localai_default
+    volumes:
+      - ./ComfyUI:/workspace/ComfyUI
+      - ./shared:/app/shared
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  infinitetalk:
+    build:
+      context: /home/ghar/code/InfiniteTalk
+      dockerfile: /home/ghar/code/local-ai-packaged/infinitetalk/Dockerfile
+    container_name: infinitetalk
+    restart: unless-stopped
+    expose:
+      - 8418
+    networks:
+      - localai_default
+    volumes:
+      - /home/ghar/code/InfiniteTalk:/app
+      - ./shared:/app/shared
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+
   # n8n-import:
   #   <<: *service-n8n
   #   container_name: n8n-import
@@ -135,7 +212,6 @@ services:
     command: sh -c "cp -v /certs-src/* /certs-dest/ && chown -R 1000:1000 /certs-dest && echo 'Certs copied and permissions set.'"
     # This container runs once and exits
 
-
   n8n:
     <<: *service-n8n
     container_name: n8n
@@ -148,10 +224,21 @@ services:
       - n8n_storage:/home/node/.n8n
       - ./n8n/backup:/backup
       - ./shared:/data/shared
+      - /mnt/nas:/nas
       - n8n-certs:/opt/custom-certificates:ro # Mount the prepared named volume
     environment:
       - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
       - NODE_EXTRA_CA_CERTS=/opt/custom-certificates/local-cert.pem
+      - WEBHOOK_URL=https://n8n.lan
+      - N8N_HOST=n8n.lan
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - N8N_EDITOR_BASE_URL=https://n8n.lan
+      - N8N_PAYLOAD_SIZE_MAX=2147483648
+      - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
+      - N8N_FORM_TRIGGER_MAX_PAYLOAD_SIZE=2147483648
+      - EXECUTIONS_TIMEOUT=3600
+      - EXECUTIONS_TIMEOUT_MAX=7200
     depends_on:
       - n8n-cert-init # Ensure certs are ready before n8n starts
 
