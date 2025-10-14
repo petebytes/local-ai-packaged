@@ -1,0 +1,265 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Process Videos",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Select a Video",
+              "fieldType": "file",
+              "multipleFiles": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -1072,
+        112
+      ],
+      "id": "7d9b1feb-446d-411b-99cf-37abf99c8a98",
+      "name": "On form submission",
+      "webhookId": "d59ecf6a-6159-447d-9412-efd6e16912ff"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whisper.lan/transcribe-large",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "Select_a_Video"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -896,
+        112
+      ],
+      "id": "1f32b124-691c-4cf9-b377-e7ff0b48a43e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /data/shared/transcriptions"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        112
+      ],
+      "id": "0cf8ba74-d498-4a31-b5a7-ecbe404aff4e",
+      "name": "Create Directory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get transcription data from HTTP Request response\nconst transcriptionData = $('HTTP Request').first().json;\n\n// Extract the first element if it's an array\nconst data = Array.isArray(transcriptionData) ? transcriptionData[0] : transcriptionData;\n\n// Get the original filename from the WhisperX response (it includes it!)\nlet originalFilename = data.filename || 'transcription';\n\n// Remove file extension and sanitize filename\nconst cleanFilename = originalFilename.replace(/\\.[^/.]+$/, '').replace(/[^a-zA-Z0-9-_]/g, '_');\n\n// Helper function to format time as HH:MM:SS,mmm\nfunction formatSRTTime(seconds) {\n  const hours = Math.floor(seconds / 3600);\n  const minutes = Math.floor((seconds % 3600) / 60);\n  const secs = Math.floor(seconds % 60);\n  const milliseconds = Math.floor((seconds % 1) * 1000);\n  \n  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;\n}\n\n// Generate plain text transcript\nlet plainText = '';\nif (data.segments) {\n  plainText = data.segments.map(seg => seg.text.trim()).join('\\n\\n');\n}\n\n// Generate SRT subtitle format\nlet srtContent = '';\nif (data.segments) {\n  data.segments.forEach((segment, index) => {\n    const startTime = formatSRTTime(segment.start);\n    const endTime = formatSRTTime(segment.end);\n    srtContent += `${index + 1}\\n${startTime} --> ${endTime}\\n${segment.text.trim()}\\n\\n`;\n  });\n}\n\n// Output single item with all content\nreturn [{\n  json: {\n    filename: cleanFilename,\n    txtContent: plainText,\n    srtContent: srtContent,\n    jsonContent: JSON.stringify(data, null, 2)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        112
+      ],
+      "id": "2d0d08a6-fb6e-4f0b-a156-63e28985cdbb",
+      "name": "Process Transcription Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst buffer = Buffer.from(item.txtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.txt`,\n      fileExtension: 'txt'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -48
+      ],
+      "id": "ce8ea11d-d5ed-4b6c-9ab3-dba0fc9b7c75",
+      "name": "Prepare TXT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst buffer = Buffer.from(item.srtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.srt`,\n      fileExtension: 'srt'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        112
+      ],
+      "id": "adc89f7c-7ee3-40bc-b2b2-c5ada5322607",
+      "name": "Prepare SRT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst buffer = Buffer.from(item.jsonContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'application/json',\n      fileName: `${item.filename}.json`,\n      fileExtension: 'json'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        288
+      ],
+      "id": "f1e43910-cad3-42d2-8403-8eee949d533f",
+      "name": "Prepare JSON"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -48
+      ],
+      "id": "43dd8469-727f-42fb-816a-39b5720a6919",
+      "name": "Save Plain Text"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.srt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        112
+      ],
+      "id": "f5a625bf-6ae7-4ed2-ae71-d6f95034cdc3",
+      "name": "Save SRT Subtitles"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        288
+      ],
+      "id": "d14c1daa-70bf-4943-9a0a-78384f33b958",
+      "name": "Save JSON Timing"
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Create Directory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Directory": {
+      "main": [
+        [
+          {
+            "node": "Process Transcription Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Transcription Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare TXT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare SRT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare TXT": {
+      "main": [
+        [
+          {
+            "node": "Save Plain Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SRT": {
+      "main": [
+        [
+          {
+            "node": "Save SRT Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare JSON": {
+      "main": [
+        [
+          {
+            "node": "Save JSON Timing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "7939fbd6e912ad3349fcdc6e8512dbf38c0a7b1f27d1dba9deffc22f205128b7"
+  }
+}

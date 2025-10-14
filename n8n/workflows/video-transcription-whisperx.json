@@ -1,0 +1,309 @@
+{
+  "name": "Video Transcription with WhisperX",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f5d8a3b1-2e4c-4d1a-9f6e-7c8b9a0d1e2f",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ '/data/shared/' + $now.toFormat('yyyy-MM-dd-HHmmss') + '-video.mp4' }}",
+        "dataPropertyName": "data"
+      },
+      "id": "b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Write Video to Shared",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Store the video file path for later use\nconst videoPath = items[0].json.fileName;\nconst audioPath = videoPath.replace('.mp4', '.wav');\n\nreturn [\n  {\n    json: {\n      videoPath: videoPath,\n      audioPath: audioPath\n    }\n  }\n];"
+      },
+      "id": "c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Prepare File Paths",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i {{ $json.videoPath }} -vn -acodec pcm_s16le -ar 16000 -ac 1 {{ $json.audioPath }} -y"
+      },
+      "id": "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "name": "Extract Audio with FFmpeg",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "={{ $json.audioPath }}",
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "id": "e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "name": "Read Audio File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://whisperx:8000/transcribe",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "large-v3"
+            },
+            {
+              "name": "enable_diarization",
+              "value": "true"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.language || 'en' }}"
+            }
+          ]
+        },
+        "options": {
+          "bodyContentType": "multipart-form-data",
+          "timeout": 3600000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        }
+      },
+      "id": "f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      "name": "Transcribe with WhisperX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 10000,
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Process transcription results\nconst response = items[0].json;\n\n// Extract segments with timestamps and speakers\nconst segments = response.segments || [];\n\n// Format the transcription\nlet formattedText = '';\nlet srtContent = '';\nlet vttContent = 'WEBVTT\\n\\n';\n\nsegments.forEach((segment, index) => {\n  const startTime = segment.start || 0;\n  const endTime = segment.end || 0;\n  const text = segment.text || '';\n  const speaker = segment.speaker || 'Unknown';\n  \n  // Format for readable output\n  formattedText += `[${startTime.toFixed(2)}s - ${endTime.toFixed(2)}s] ${speaker}: ${text}\\n`;\n  \n  // SRT format\n  srtContent += `${index + 1}\\n`;\n  srtContent += `${formatSRTTime(startTime)} --> ${formatSRTTime(endTime)}\\n`;\n  srtContent += `${text}\\n\\n`;\n  \n  // WebVTT format\n  vttContent += `${index + 1}\\n`;\n  vttContent += `${formatVTTTime(startTime)} --> ${formatVTTTime(endTime)}\\n`;\n  vttContent += `${text}\\n\\n`;\n});\n\n// Helper function to format time for SRT (HH:MM:SS,mmm)\nfunction formatSRTTime(seconds) {\n  const hours = Math.floor(seconds / 3600);\n  const minutes = Math.floor((seconds % 3600) / 60);\n  const secs = Math.floor(seconds % 60);\n  const millis = Math.floor((seconds % 1) * 1000);\n  \n  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(millis).padStart(3, '0')}`;\n}\n\n// Helper function to format time for WebVTT (HH:MM:SS.mmm)\nfunction formatVTTTime(seconds) {\n  const hours = Math.floor(seconds / 3600);\n  const minutes = Math.floor((seconds % 3600) / 60);\n  const secs = Math.floor(seconds % 60);\n  const millis = Math.floor((seconds % 1) * 1000);\n  \n  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;\n}\n\nreturn [\n  {\n    json: {\n      transcription: formattedText,\n      srtSubtitles: srtContent,\n      vttSubtitles: vttContent,\n      language: response.language,\n      segmentCount: segments.length,\n      rawResponse: response\n    }\n  }\n];"
+      },
+      "id": "a7b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d",
+      "name": "Format Transcription Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Clean up temporary files\nconst { exec } = require('child_process');\nconst util = require('util');\nconst execPromise = util.promisify(exec);\n\nconst videoPath = items[0].json.videoPath;\nconst audioPath = items[0].json.audioPath;\n\n// Note: File cleanup via Code node is limited\n// Better to use Execute Command node for cleanup\nreturn items;"
+      },
+      "id": "b8c9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e",
+      "name": "Cleanup Note",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "disabled": true,
+      "notes": "Optional: Clean up temp files. Better done with Execute Command node."
+    },
+    {
+      "parameters": {
+        "command": "=rm -f {{ $('Prepare File Paths').item.json.videoPath }} {{ $('Prepare File Paths').item.json.audioPath }}"
+      },
+      "id": "c9d0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f",
+      "name": "Cleanup Files",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "continueOnFail": true,
+      "notes": "Clean up temporary video and audio files from shared directory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "error-check-1",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d0e1f2a3-4b5c-6d7e-8f9a-0b1c2d3e4f5a",
+      "name": "Check for Errors",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2220, 300],
+      "disabled": true,
+      "notes": "Optional: Add error checking and notification"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Write Video to Shared",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Video to Shared": {
+      "main": [
+        [
+          {
+            "node": "Prepare File Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare File Paths": {
+      "main": [
+        [
+          {
+            "node": "Extract Audio with FFmpeg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Audio with FFmpeg": {
+      "main": [
+        [
+          {
+            "node": "Read Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Audio File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe with WhisperX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe with WhisperX": {
+      "main": [
+        [
+          {
+            "node": "Format Transcription Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Transcription Results": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "id": "video-transcription-whisperx",
+  "tags": [
+    {
+      "createdAt": "2025-10-09T00:00:00.000Z",
+      "updatedAt": "2025-10-09T00:00:00.000Z",
+      "id": "1",
+      "name": "AI"
+    },
+    {
+      "createdAt": "2025-10-09T00:00:00.000Z",
+      "updatedAt": "2025-10-09T00:00:00.000Z",
+      "id": "2",
+      "name": "Transcription"
+    }
+  ]
+}

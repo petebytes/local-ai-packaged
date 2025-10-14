@@ -1,0 +1,198 @@
+{
+  "name": "Video Transcription (Simple - Using Curl)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-1",
+      "name": "When clicking 'Test workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-video-1",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ '/data/shared/video-' + $now.toFormat('yyyyMMdd-HHmmss') + '.mp4' }}",
+        "dataPropertyName": "data"
+      },
+      "id": "write-video-1",
+      "name": "Save Video",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const videoPath = items[0].json.fileName;\nconst audioPath = videoPath.replace('.mp4', '.wav');\nconst timestamp = $now.toFormat('yyyyMMdd-HHmmss');\n\nreturn [{\n  json: {\n    videoPath,\n    audioPath,\n    timestamp\n  }\n}];"
+      },
+      "id": "code-paths-1",
+      "name": "Generate Paths",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i {{ $json.videoPath }} -vn -acodec pcm_s16le -ar 16000 -ac 1 {{ $json.audioPath }} -y 2>&1"
+      },
+      "id": "ffmpeg-extract-1",
+      "name": "FFmpeg Extract Audio",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "notes": "Extracts audio as 16kHz mono WAV"
+    },
+    {
+      "parameters": {
+        "command": "=curl -X POST http://whisperx:8000/transcribe \\\n  -F \"file=@{{ $json.audioPath }}\" \\\n  -F \"model={{ $json.model || 'large-v3' }}\" \\\n  -F \"enable_diarization={{ $json.enable_diarization || 'true' }}\" \\\n  -F \"language={{ $json.language || 'en' }}\" \\\n  --max-time 3600"
+      },
+      "id": "curl-transcribe-1",
+      "name": "Transcribe with Curl",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 10000,
+      "notes": "Uploads audio to WhisperX API via curl"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse the JSON response from curl\nconst stdout = items[0].json.stdout || items[0].binary?.data?.toString() || '{}';\n\nlet response;\ntry {\n  response = JSON.parse(stdout);\n} catch (e) {\n  return [{\n    json: {\n      error: 'Failed to parse WhisperX response',\n      rawOutput: stdout\n    }\n  }];\n}\n\n// Extract and format segments\nconst segments = response.segments || [];\nlet formattedText = '';\nlet srtContent = '';\nlet vttContent = 'WEBVTT\\n\\n';\n\nsegments.forEach((segment, index) => {\n  const start = segment.start || 0;\n  const end = segment.end || 0;\n  const text = (segment.text || '').trim();\n  const speaker = segment.speaker || 'Unknown';\n  \n  // Plain text with speaker labels\n  formattedText += `[${start.toFixed(2)}s - ${end.toFixed(2)}s] ${speaker}: ${text}\\n`;\n  \n  // SRT format\n  const srtStart = formatSRTTime(start);\n  const srtEnd = formatSRTTime(end);\n  srtContent += `${index + 1}\\n${srtStart} --> ${srtEnd}\\n${text}\\n\\n`;\n  \n  // WebVTT format\n  const vttStart = formatVTTTime(start);\n  const vttEnd = formatVTTTime(end);\n  vttContent += `${index + 1}\\n${vttStart} --> ${vttEnd}\\n${text}\\n\\n`;\n});\n\nfunction formatSRTTime(seconds) {\n  const h = Math.floor(seconds / 3600);\n  const m = Math.floor((seconds % 3600) / 60);\n  const s = Math.floor(seconds % 60);\n  const ms = Math.floor((seconds % 1) * 1000);\n  return `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)},${pad(ms, 3)}`;\n}\n\nfunction formatVTTTime(seconds) {\n  const h = Math.floor(seconds / 3600);\n  const m = Math.floor((seconds % 3600) / 60);\n  const s = Math.floor(seconds % 60);\n  const ms = Math.floor((seconds % 1) * 1000);\n  return `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}.${pad(ms, 3)}`;\n}\n\nfunction pad(num, size) {\n  return String(num).padStart(size, '0');\n}\n\nreturn [{\n  json: {\n    transcription: formattedText,\n    srt: srtContent,\n    vtt: vttContent,\n    language: response.language,\n    segments: segments.length,\n    timestamp: items[0].json.timestamp\n  }\n}];"
+      },
+      "id": "code-format-1",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "notes": "Parses and formats transcription into multiple formats"
+    },
+    {
+      "parameters": {
+        "command": "=rm -f {{ $('Generate Paths').item.json.videoPath }} {{ $('Generate Paths').item.json.audioPath }}"
+      },
+      "id": "cleanup-files-1",
+      "name": "Cleanup Temp Files",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "continueOnFail": true,
+      "notes": "Removes temporary video and audio files"
+    }
+  ],
+  "connections": {
+    "When clicking 'Test workflow'": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Save Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Video": {
+      "main": [
+        [
+          {
+            "node": "Generate Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Paths": {
+      "main": [
+        [
+          {
+            "node": "FFmpeg Extract Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FFmpeg Extract Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe with Curl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe with Curl": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "id": "video-transcription-simple",
+  "tags": []
+}
