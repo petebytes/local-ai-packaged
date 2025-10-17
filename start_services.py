@@ -64,6 +64,52 @@ def start_supabase():
         "docker", "compose", "-p", "localai", "-f", "supabase/docker/docker-compose.yml", "up", "-d"
     ])
 
+def check_ngc_api_key():
+    """Check NGC authentication by running the setup-ngc.sh script."""
+    setup_script = "virtual-assistant/setup-ngc.sh"
+
+    if not os.path.exists(setup_script):
+        print("\nWarning: NGC setup script not found at", setup_script)
+        print("Virtual Assistant services (Riva ASR/TTS, Audio2Face) may not start")
+        return False
+
+    try:
+        # Run the existing NGC setup script which handles everything securely
+        result = subprocess.run(
+            ["bash", setup_script],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd="."
+        )
+
+        if result.returncode == 0:
+            # Script succeeded, authentication is good
+            return True
+        else:
+            # Script failed, show its output for debugging
+            if result.stderr:
+                print("\n" + result.stderr.strip())
+            if result.stdout:
+                print(result.stdout.strip())
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("\nWarning: NGC authentication timed out")
+        return False
+    except Exception as e:
+        print(f"\nWarning: Could not run NGC setup: {e}")
+        print("Virtual Assistant services may not start without NGC authentication")
+        return False
+
+def check_crawl4ai_image():
+    """Verify Crawl4AI will use the official pre-built GPU image."""
+    print("Crawl4AI: Using official unclecode/crawl4ai:gpu image from Docker Hub")
+    print("  - GPU support: Enabled")
+    print("  - Shared caching: hf-cache, torch-cache")
+    print("  - Image will be pulled automatically on first run")
+    return True
+
 def generate_certificates():
     """Generate self-signed certificates if they don't exist."""
     if not os.path.exists("certs/local-cert.pem"):
@@ -246,6 +292,15 @@ def main():
     parser.add_argument('--network-access', action='store_true',
                       help='Configure for network access from other computers')
     args = parser.parse_args()
+
+    # Check NGC API key for Virtual Assistant services
+    print("\n" + "="*50)
+    print("Checking Prerequisites")
+    print("="*50)
+    check_ngc_api_key()
+
+    # Check if Crawl4AI image exists
+    check_crawl4ai_image()
 
     # Generate HTTPS certificates if needed
     if not args.skip_certs:

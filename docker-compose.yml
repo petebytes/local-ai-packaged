@@ -24,6 +24,15 @@ volumes:
     driver: local
   comfyui-models:
     driver: local
+  # Virtual Assistant volumes
+  va-riva-cache:
+    driver: local
+  va-riva-tts-cache:
+    driver: local
+  va-audio2face-data:
+    driver: local
+  va-audio2face-models:
+    driver: local
 
 networks:
   localai_default:
@@ -109,11 +118,11 @@ services:
                 - gpu
 
   crawl4ai:
-    # image: unclecode/crawl4ai:basic
-    image: crawl4ai:latest # Assumes a local image named 'crawl4ai' is built
+    image: unclecode/crawl4ai:gpu-amd64 # Official GPU-enabled AMD64 image from Docker Hub
+    # image: crawl4ai:latest # Use this if you build locally with GPU support
     container_name: crawl4ai
     restart: unless-stopped
-    pull_policy: never # Don't attempt to pull this image from a remote registry
+    pull_policy: if_not_present # Pull from Docker Hub if not available locally
     expose:
       - 8000 # Expose port internally for nginx proxy
     networks:
@@ -397,3 +406,131 @@ services:
       - registry-cache:/var/lib/registry
     networks:
       - localai_default
+
+  # Virtual Assistant - Web Interface
+  virtual-assistant-web:
+    build:
+      context: ./virtual-assistant
+      dockerfile: Dockerfile
+    container_name: virtual-assistant-web
+    restart: unless-stopped
+    expose:
+      - 8080
+    networks:
+      - localai_default
+    volumes:
+      - ./virtual-assistant:/app
+      - ./virtual-assistant/shared:/app/shared
+      # Shared cache volumes
+      - hf-cache:/data/.huggingface
+      - torch-cache:/data/.torch
+    environment:
+      - RIVA_ASR_URL=riva-asr:50051
+      - RIVA_TTS_URL=riva-tts:50052
+      - AUDIO2FACE_URL=http://audio2face:8000
+      - HF_HOME=/data/.huggingface
+      - TORCH_HOME=/data/.torch
+    depends_on:
+      - riva-asr
+      - riva-tts
+      - audio2face
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NVIDIA Riva ASR - Speech Recognition
+  riva-asr:
+    image: nvcr.io/nim/nvidia/parakeet-ctc-1.1b-asr:latest
+    container_name: riva-asr
+    runtime: nvidia
+    shm_size: '8gb'
+    restart: unless-stopped
+    expose:
+      - 9000
+      - 50051
+    networks:
+      - localai_default
+    volumes:
+      - va-riva-cache:/opt/nim/.cache
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NGC_API_KEY=${NGC_API_KEY}
+      - NIM_HTTP_API_PORT=9000
+      - NIM_GRPC_API_PORT=50051
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  # NVIDIA Riva TTS - Text-to-Speech
+  riva-tts:
+    image: nvcr.io/nim/nvidia/fastpitch-hifigan-tts:latest
+    container_name: riva-tts
+    runtime: nvidia
+    shm_size: '8gb'
+    restart: unless-stopped
+    expose:
+      - 9001
+      - 50052
+    networks:
+      - localai_default
+    volumes:
+      - va-riva-tts-cache:/opt/nim/.cache
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NGC_API_KEY=${NGC_API_KEY}
+      - NIM_HTTP_API_PORT=9001
+      - NIM_GRPC_API_PORT=50052
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  # NVIDIA Audio2Face - Avatar Animation
+  audio2face:
+    image: nvcr.io/nim/nvidia/audio2face-3d:1.3.16
+    container_name: audio2face
+    runtime: nvidia
+    restart: unless-stopped
+    expose:
+      - 8000
+    networks:
+      - localai_default
+    volumes:
+      - va-audio2face-data:/data
+      - va-audio2face-models:/models
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NGC_API_KEY=${NGC_API_KEY}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

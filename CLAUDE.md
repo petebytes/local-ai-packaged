@@ -147,6 +147,26 @@ curl https://whisper.lan/models
 docker compose -p localai logs -f whisperx
 ```
 
+### Virtual Assistant
+
+```bash
+# Access the web interface
+# Open your browser to https://va.lan
+
+# View service logs
+docker compose -p localai logs -f virtual-assistant-web
+docker compose -p localai logs -f riva-asr
+docker compose -p localai logs -f riva-tts
+docker compose -p localai logs -f audio2face
+
+# The Virtual Assistant includes:
+# - Browser-based visual assistant with webcam/screen sharing
+# - NVIDIA Riva ASR for speech recognition (gRPC port 50051, HTTP port 9000)
+# - NVIDIA Riva TTS for text-to-speech (gRPC port 50052, HTTP port 9001)
+# - NVIDIA Audio2Face for avatar animation (HTTP port 8000)
+# - Real-time WebSocket communication for video/audio streaming
+```
+
 ## High-Level Architecture
 
 ### Service Orchestration
@@ -169,6 +189,7 @@ The system uses a unified Docker Compose project name (`localai`) to manage two 
    - **Open WebUI**: ChatGPT-like interface for local models
    - **ComfyUI**: Visual node-based Stable Diffusion workflow builder
    - **WhisperX**: Audio/video transcription with word-level timestamps and speaker diarization
+   - **Virtual Assistant**: Browser-based visual assistant with NVIDIA Riva ASR/TTS and Audio2Face
    - **Flowise**: No-code AI agent builder
    - **Qdrant**: High-performance vector database for RAG
    - **Nginx**: Reverse proxy providing HTTPS termination
@@ -222,6 +243,10 @@ The `start_services.py` script orchestrates startup:
 
 - n8n connects to LM Studio at `http://localhost:1234` (or via https://lmstudio.lan)
 - WhisperX API accessible at `http://whisperx:8000`
+- Virtual Assistant web service connects to NVIDIA services:
+  - Riva ASR at `riva-asr:50051` (gRPC) and `riva-asr:9000` (HTTP)
+  - Riva TTS at `riva-tts:50052` (gRPC) and `riva-tts:9001` (HTTP)
+  - Audio2Face at `http://audio2face:8000`
 - Database connections use `db` as hostname (Supabase PostgreSQL)
 - Qdrant accessible at `http://qdrant:6333`
 - All services resolve via Docker's internal DNS
@@ -268,6 +293,7 @@ Critical environment variables that must be set:
 - `SERVICE_ROLE_KEY`: Supabase service role key
 - `POOLER_TENANT_ID`: Database pooler configuration
 - `HF_TOKEN`: HuggingFace token for WhisperX speaker diarization (optional)
+- `NGC_API_KEY`: NVIDIA NGC API key for Riva and Audio2Face services (required for Virtual Assistant)
 
 ## Service Access URLs
 
@@ -278,6 +304,7 @@ After starting services, access them at:
 - Supabase Studio: https://studio.lan
 - ComfyUI: https://comfyui.lan
 - WhisperX Transcription: https://whisper.lan
+- Virtual Assistant: https://va.lan
 - NocoDB: https://nocodb.lan
 - Crawl4AI: https://crawl4ai.lan
 - Qdrant: https://qdrant.lan
