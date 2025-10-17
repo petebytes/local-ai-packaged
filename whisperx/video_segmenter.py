@@ -80,7 +80,8 @@ class VideoSegmenter:
                     repo_or_dir='snakers4/silero-vad',
                     model='silero_vad',
                     force_reload=False,
-                    onnx=False
+                    onnx=False,
+                    trust_repo=True
                 )
                 self.vad_model = model
                 self.vad_utils = utils

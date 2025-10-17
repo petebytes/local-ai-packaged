@@ -20,7 +20,7 @@ python start_services.py --profile gpu-amd
 # Start with CPU only
 python start_services.py --profile cpu
 
-# Start without Ollama (for Mac users running Ollama locally)
+# Start without external LLM server profile
 python start_services.py --profile none
 
 # Start with network access enabled (for access from other computers)
@@ -165,7 +165,7 @@ The system uses a unified Docker Compose project name (`localai`) to manage two 
 
 2. **AI Services Stack** (`docker-compose.yml`):
    - **n8n**: Low-code workflow automation with 400+ integrations
-   - **Ollama**: Local LLM server supporting multiple models
+   - **LM Studio**: Local LLM server with OpenAI-compatible API
    - **Open WebUI**: ChatGPT-like interface for local models
    - **ComfyUI**: Visual node-based Stable Diffusion workflow builder
    - **WhisperX**: Audio/video transcription with word-level timestamps and speaker diarization
@@ -216,11 +216,11 @@ The `start_services.py` script orchestrates startup:
 - **gpu-nvidia**: Uses NVIDIA GPU via Docker GPU runtime
 - **gpu-amd**: AMD GPU support on Linux via ROCm
 - **cpu**: CPU-only mode for systems without GPU
-- **none**: No Ollama container (for external Ollama instances)
+- **none**: Minimal profile without additional LLM servers
 
 ### Inter-Service Communication
 
-- n8n connects to Ollama at `http://ollama:11434`
+- n8n connects to LM Studio at `http://localhost:1234` (or via https://lmstudio.lan)
 - WhisperX API accessible at `http://whisperx:8000`
 - Database connections use `db` as hostname (Supabase PostgreSQL)
 - Qdrant accessible at `http://qdrant:6333`
@@ -281,7 +281,7 @@ After starting services, access them at:
 - NocoDB: https://nocodb.lan
 - Crawl4AI: https://crawl4ai.lan
 - Qdrant: https://qdrant.lan
-- Ollama: https://ollama.lan
+- LM Studio: https://lmstudio.lan
 - Kokoro TTS: https://kokoro.lan
 - Traefik Dashboard: https://traefik.lan
 

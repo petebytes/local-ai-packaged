@@ -103,7 +103,7 @@ def get_primary_ip():
 def update_hosts_file(network_access=False):
     """Update hosts file with local domain entries."""
     hosts_entries = [
-        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan", "supabase.lan", "nocodb.lan", "raven.lan", "ollama.lan", "wan.lan", "whisper.lan", "infinitetalk.lan"
+        "n8n.lan", "openwebui.lan", "kokoro.lan", "studio.lan", "traefik.lan", "comfyui.lan", "crawl4ai.lan", "supabase.lan", "nocodb.lan", "raven.lan", "lmstudio.lan", "wan.lan", "whisper.lan", "infinitetalk.lan", "va.lan"
     ]
 
     # Determine hosts file location based on OS
@@ -217,8 +217,22 @@ def start_local_ai(profile=None):
     cmd = ["docker", "compose", "-p", "localai"]
     if profile and profile != "none":
         cmd.extend(["--profile", profile])
-    cmd.extend(["-f", "docker-compose.yml", "up", "-d"])
-    run_command(cmd)
+
+    # Use host-level cache if available
+    compose_files = ["-f", "docker-compose.yml"]
+    if os.path.exists("docker-compose.host-cache.yml"):
+        compose_files.extend(["-f", "docker-compose.host-cache.yml"])
+        print("Using host-level cache (/opt/ai-cache) for shared models across projects")
+
+    cmd.extend(compose_files)
+    cmd.extend(["up", "-d", "--build"])  # Add --build to use BuildKit optimizations
+
+    # Set BuildKit environment variable
+    env = os.environ.copy()
+    env["DOCKER_BUILDKIT"] = "1"
+
+    print("Running:", " ".join(cmd))
+    subprocess.run(cmd, check=True, env=env)
 
     # Fix the Read Aloud feature in Open WebUI
     fix_open_webui_read_aloud()
@@ -275,7 +289,8 @@ def main():
     print("- https://nocodb.lan - NocoDB")
     print("- https://whisper.lan - WhisperX Transcription")
     print("- https://infinitetalk.lan - InfiniteTalk Video Generation")
-    print("- https://ollama.lan - Ollama")
+    print("- https://va.lan - Virtual Assistant")
+    print("- https://lmstudio.lan - LM Studio")
     print("- https://traefik.lan - Status Page")
 
     if args.network_access:

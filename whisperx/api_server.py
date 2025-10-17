@@ -16,6 +16,7 @@ from typing import Optional
 from pathlib import Path
 import logging
 import time
+import requests
 
 # Import our custom modules
 from ffmpeg_processor import FFmpegProcessor
@@ -44,7 +45,15 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 COMPUTE_TYPE = os.getenv("COMPUTE_TYPE", "float16" if DEVICE == "cuda" else "int8")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "16"))
 
+# Enable TF32 for RTX 5090 Blackwell optimization (20-40% speedup on 5th-gen Tensor Cores)
+# TF32 provides significant performance boost with minimal accuracy loss
+if DEVICE == "cuda":
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    logger.info("TF32 enabled for Tensor Core acceleration")
+
 # Initialize processors
+# Enable hw_accel for RTX 5090's 9th-gen NVENC/NVDEC - provides significant speedup for video processing
 ffmpeg_processor = FFmpegProcessor(use_hw_accel=True, enhance_speech=True)
 video_segmenter = VideoSegmenter(chunk_duration=30, overlap_duration=10)
 
@@ -54,6 +63,35 @@ TEMP_DIR = SHARED_DIR / "temp"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 logger.info(f"Starting WhisperX API Server on {DEVICE} with compute type {COMPUTE_TYPE}")
+
+
+def send_progress_callback(callback_url: str, job_id: str, progress: int, stage: str, message: str, segment_info: dict = None):
+    """
+    Send progress update to callback URL.
+    Fails silently if callback fails to not interrupt transcription.
+    """
+    if not callback_url or not job_id:
+        return
+
+    try:
+        payload = {
+            "job_id": job_id,
+            "status": "processing",
+            "progress": progress,
+            "stage": stage,
+            "message": message
+        }
+
+        if segment_info:
+            payload["segment_info"] = segment_info
+
+        response = requests.post(callback_url, json=payload, timeout=5)
+        if response.status_code == 200:
+            logger.debug(f"Progress callback sent: {progress}% - {message}")
+        else:
+            logger.warning(f"Progress callback failed with status {response.status_code}")
+    except Exception as e:
+        logger.warning(f"Failed to send progress callback: {e}")
 
 
 @app.get("/")
@@ -222,17 +260,17 @@ async def transcribe(
 def transcribe_audio_segment(
     audio_path: str,
     segment: AudioSegment,
-    model_name: str,
+    model,  # Pre-loaded model instance
     language: Optional[str] = None
 ) -> dict:
     """
-    Transcribe a single audio segment.
+    Transcribe a single audio segment using a pre-loaded model.
 
     Args:
         audio_path: Path to full audio file
         segment: AudioSegment object with start/end times
-        model_name: Whisper model to use
-        language: Optional language code
+        model: Pre-loaded WhisperX model instance (avoids reloading)
+        language: Optional language code (if known, skips auto-detection)
 
     Returns:
         Dictionary with transcription results
@@ -247,26 +285,13 @@ def transcribe_audio_segment(
         end_sample = int(segment.end * sample_rate)
         segment_audio = audio[start_sample:end_sample]
 
-        # Load model
-        model = whisperx.load_model(
-            model_name,
-            device=DEVICE,
-            compute_type=COMPUTE_TYPE,
-            language=language
-        )
-
-        # Transcribe
-        result = model.transcribe(segment_audio, batch_size=BATCH_SIZE)
+        # Transcribe with pre-loaded model (no model loading overhead!)
+        result = model.transcribe(segment_audio, batch_size=BATCH_SIZE, language=language)
 
         # Adjust timestamps to absolute time
         for seg in result.get("segments", []):
             seg["start"] += segment.start
             seg["end"] += segment.start
-
-        # Cleanup
-        del model
-        gc.collect()
-        torch.cuda.empty_cache()
 
         return {
             "segment_id": segment.segment_id,
@@ -294,7 +319,9 @@ async def transcribe_large(
     language: Optional[str] = Form(default=None),
     chunking_strategy: str = Form(default="auto"),
     enable_diarization: bool = Form(default=True),
-    hf_token: Optional[str] = Form(default=None)
+    hf_token: Optional[str] = Form(default=None),
+    callback_url: Optional[str] = Form(default=None),
+    job_id: Optional[str] = Form(default=None)
 ):
     """
     Transcribe large audio/video files with automatic chunking.
@@ -309,6 +336,8 @@ async def transcribe_large(
     - chunking_strategy: 'auto', 'vad', 'time', or 'silence'
     - enable_diarization: Enable speaker diarization
     - hf_token: HuggingFace token for diarization
+    - callback_url: Optional URL to POST progress updates
+    - job_id: Optional job ID for progress tracking
 
     Returns:
     - JSON with stitched transcription, timestamps, and speakers
@@ -344,21 +373,72 @@ async def transcribe_large(
         segments = video_segmenter.segment_audio(str(audio_file), strategy=chunking_strategy)
         logger.info(f"Created {len(segments)} segments using '{chunking_strategy}' strategy")
 
-        # Transcribe segments sequentially (to manage VRAM)
+        # Load Whisper model ONCE and reuse for all segments (major optimization!)
+        # Best practice from 2025: "Most time is taken by model initialization"
+        logger.info(f"Loading Whisper model: {model}")
+        model_obj = whisperx.load_model(
+            model,
+            device=DEVICE,
+            compute_type=COMPUTE_TYPE,
+            language=language  # Pre-set language if provided
+        )
+
+        # Detect language once from first segment if not provided (optimization)
+        # Whisper design: language detected once, reused for all segments
         all_segments = []
         detected_language = language
 
-        for i, seg in enumerate(segments):
+        if not detected_language and len(segments) > 0:
+            logger.info("Detecting language from first segment...")
+            first_result = transcribe_audio_segment(str(audio_file), segments[0], model_obj, language=None)
+            detected_language = first_result.get('language', 'en')
+            all_segments.extend(first_result.get('segments', []))
+            logger.info(f"Detected language: {detected_language}")
+            start_idx = 1  # Skip first segment since we already processed it
+        else:
+            start_idx = 0
+
+        # Transcribe remaining segments with cached model and detected language
+        for i in range(start_idx, len(segments)):
+            seg = segments[i]
             logger.info(f"Transcribing segment {i+1}/{len(segments)} ({seg.start:.1f}s - {seg.end:.1f}s)")
-            result = transcribe_audio_segment(str(audio_file), seg, model, language)
 
-            if not detected_language and result.get('language'):
-                detected_language = result['language']
+            # Calculate progress: 20-80% range for transcription phase
+            segment_progress = 20 + int((i / len(segments)) * 60)
 
+            # Send progress callback before processing segment
+            send_progress_callback(
+                callback_url=callback_url,
+                job_id=job_id,
+                progress=segment_progress,
+                stage="transcription",
+                message=f"Transcribing segment {i+1}/{len(segments)}",
+                segment_info={
+                    "current": i + 1,
+                    "total": len(segments),
+                    "time_range": f"{seg.start:.1f}s - {seg.end:.1f}s"
+                }
+            )
+
+            # Reuse model and detected language (no reload, no re-detection!)
+            result = transcribe_audio_segment(str(audio_file), seg, model_obj, language=detected_language)
             all_segments.extend(result.get('segments', []))
+
+        # Cleanup model after all segments processed
+        del model_obj
+        gc.collect()
+        torch.cuda.empty_cache()
 
         # Align for word-level timestamps
         logger.info("Aligning timestamps across all segments...")
+        send_progress_callback(
+            callback_url=callback_url,
+            job_id=job_id,
+            progress=80,
+            stage="alignment",
+            message="Aligning word-level timestamps..."
+        )
+
         audio = whisperx.load_audio(str(audio_file))
 
         try:
@@ -390,6 +470,14 @@ async def transcribe_large(
 
             if hf_token:
                 logger.info("Running speaker diarization...")
+                send_progress_callback(
+                    callback_url=callback_url,
+                    job_id=job_id,
+                    progress=85,
+                    stage="diarization",
+                    message="Identifying speakers..."
+                )
+
                 try:
                     diarize_model = whisperx.DiarizationPipeline(
                         use_auth_token=hf_token,
@@ -566,8 +654,9 @@ async def list_models():
             "large-v3",
             "large-v3-turbo"
         ],
-        "recommended_for_rtx3090": ["large-v3", "large-v3-turbo"],
-        "note": "large-v3 provides best accuracy, large-v3-turbo is 6x faster with similar quality"
+        "recommended_for_rtx5090": ["large-v3", "large-v3-turbo"],
+        "note": "large-v3 provides best accuracy, large-v3-turbo is 6x faster with similar quality",
+        "rtx5090_features": "32GB VRAM, 5th-gen Tensor Cores with FP4/INT4, 3,352 AI TOPS"
     }
 
 

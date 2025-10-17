@@ -25,7 +25,10 @@ SERVICES = [
     "supabase.lan",
     "nocodb.lan",
     "raven.lan",
-    "ollama.lan"
+    "lmstudio.lan",
+    "whisper.lan",
+    "infinitetalk.lan",
+    "va.lan"
 ]
 
 def get_primary_ip():
@@ -111,7 +114,10 @@ To access these services from other computers on your network:
    - https://crawl4ai.lan - Crawl4AI
    - https://nocodb.lan - NocoDB
    - https://raven.lan - Main dashboard
-   - https://ollama.lan - Ollama API
+   - https://lmstudio.lan - LM Studio API
+   - https://whisper.lan - WhisperX Transcription
+   - https://infinitetalk.lan - InfiniteTalk Video Generation
+   - https://va.lan - Virtual Assistant
    - https://traefik.lan - Status page
 
 4. TROUBLESHOOTING

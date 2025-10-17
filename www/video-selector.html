@@ -3,207 +3,926 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Process Videos from NAS</title>
+    <title>Process Videos for the Amazing Peg</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons - Pinned version for stability -->
+    <script src="https://unpkg.com/lucide@0.294.0"></script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-            text-align: center;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: #f8f9ff;
-            white-space: normal;
-            overflow: visible;
-        }
-
-        select option {
-            white-space: normal;
-            word-wrap: break-word;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: #764ba2;
-            background-color: #f0f1ff;
-        }
-
-        .file-info {
-            margin-top: 10px;
-            font-size: 13px;
-            color: #666;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .refresh-btn {
-            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-            margin-bottom: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-        }
-
-        .message {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .message.info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
+        /* Custom animations and transitions */
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .animate-spin-slow {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast-enter {
+            animation: slideInRight 200ms ease-out;
+        }
+
+        .toast-exit {
+            animation: slideOutRight 200ms ease-in;
+        }
+
+        /* Quote fade animation */
+        .quote-fade {
+            transition: opacity 500ms ease;
+        }
+
+        .quote-fade.fade {
+            opacity: 0;
+        }
+
+        /* Focus visible styles for better accessibility */
+        *:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        /* Custom scrollbar for dark theme */
+        /* Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #475569 #1e293b;
+        }
+
+        /* Chrome, Edge, Safari */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Drag and drop styles */
+        .drag-over {
+            border-color: #3b82f6 !important;
+            background-color: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        .upload-progress {
+            transition: width 300ms ease-out;
+        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Process Videos from NAS</h1>
-
-        <button class="refresh-btn" id="refreshBtn" onclick="loadVideoList()">
-            Refresh Video List
-        </button>
-
-        <form id="processForm">
-            <div class="form-group">
-                <label for="videoSelect">Select a Video to Process</label>
-                <select id="videoSelect" name="video" required>
-                    <option value="">-- Select a video --</option>
-                </select>
-                <div class="file-info" id="fileInfo"></div>
+<body class="bg-slate-950 text-slate-200 min-h-screen font-sans antialiased">
+    <!-- Fixed Header -->
+    <header class="fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-700 z-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="/" class="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg px-2 py-1" aria-label="Back to dashboard">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    <span class="hidden sm:inline text-sm font-medium">Back</span>
+                </a>
+                <div class="w-px h-6 bg-slate-700"></div>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="video" class="w-5 h-5 text-blue-500"></i>
+                    <h1 class="text-lg sm:text-xl font-semibold text-slate-100">The Amazing Peg Video Processor</h1>
+                </div>
             </div>
-            <button type="submit" id="submitBtn">Process Video</button>
-        </form>
+            <button id="helpToggle" class="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg px-3 py-2" aria-label="Toggle help section" aria-expanded="false">
+                <i data-lucide="help-circle" class="w-5 h-5"></i>
+                <span class="hidden sm:inline text-sm font-medium">Help</span>
+            </button>
+        </div>
+    </header>
 
-        <div class="message" id="message"></div>
-    </div>
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-24">
+        <!-- Help Section (Collapsible) -->
+        <section id="helpSection" class="mb-6 hidden" role="region" aria-label="Help and instructions">
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-6 shadow-xl">
+                <div class="flex items-start gap-3 mb-4">
+                    <i data-lucide="info" class="w-5 h-5 text-blue-500 mt-0.5"></i>
+                    <div class="flex-1">
+                        <h2 class="text-lg font-semibold text-slate-100 mb-2">How to Use</h2>
+                        <div class="space-y-3 text-sm text-slate-400">
+                            <p>This tool processes video and audio files using advanced AI transcription in 3 simple steps:</p>
+                            <ol class="list-decimal list-inside space-y-2 ml-2">
+                                <li><strong class="text-blue-400">Upload:</strong> Upload a new video or select an existing one from your NAS</li>
+                                <li><strong class="text-emerald-400">Process:</strong> Select a video and click <strong class="text-slate-300">"Start Processing"</strong> to begin AI transcription</li>
+                                <li><strong class="text-purple-400">Download:</strong> Download your completed transcriptions in TXT, SRT, or JSON format</li>
+                            </ol>
+                            <div class="mt-4 p-3 bg-slate-800 rounded-lg border border-slate-700">
+                                <p class="font-medium text-slate-300 mb-1">Supported Formats:</p>
+                                <p class="text-slate-400">MP4, AVI, MOV, MKV, MP3, WAV, M4A, and more</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Peggy Quote -->
+        <div class="mb-8 text-center" role="region" aria-label="Inspirational quote">
+            <p id="peggyQuote" class="quote-fade text-blue-400 italic font-semibold text-lg sm:text-xl lg:text-2xl px-4 min-h-[2rem] transition-opacity duration-500 leading-relaxed"></p>
+        </div>
+
+        <!-- Main Card -->
+        <div class="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
+            <div class="p-6 sm:p-8">
+                <!-- STEP 1: Upload -->
+                <div class="mb-8 pb-8 border-b border-slate-700">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-sm">
+                            1
+                        </div>
+                        <h2 class="text-lg font-semibold text-slate-100">Upload Video</h2>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-4 ml-11">Upload a new video or audio file to your NAS for processing</p>
+
+                    <!-- Drag and Drop Zone -->
+                    <div id="dropZone" class="relative border-2 border-dashed border-slate-600 rounded-lg p-8 text-center transition-all duration-200 hover:border-slate-500 hover:bg-slate-800/50 cursor-pointer ml-11">
+                        <input type="file" id="fileInput" accept="video/*,audio/*,.mp4,.avi,.mov,.mkv,.mp3,.wav,.m4a,.flac,.ogg,.webm" class="hidden" />
+
+                        <div id="dropZoneContent">
+                            <i data-lucide="upload" class="w-12 h-12 text-slate-500 mx-auto mb-3"></i>
+                            <p class="text-slate-400 mb-2">
+                                <span class="font-semibold text-slate-300">Click to browse</span> or drag and drop
+                            </p>
+                            <p class="text-xs text-slate-500">
+                                Supports: MP4, AVI, MOV, MKV, MP3, WAV, M4A, FLAC, OGG, WebM
+                            </p>
+                        </div>
+
+                        <!-- Selected File Display -->
+                        <div id="selectedFileDisplay" class="hidden">
+                            <div class="flex items-center justify-center gap-3 mb-3">
+                                <i data-lucide="file-video" class="w-8 h-8 text-blue-500"></i>
+                                <div class="text-left flex-1">
+                                    <p id="selectedFileName" class="text-sm font-medium text-slate-200"></p>
+                                    <p id="selectedFileSize" class="text-xs text-slate-400"></p>
+                                </div>
+                                <button id="clearFileBtn" class="text-slate-400 hover:text-slate-200 transition-colors duration-200" aria-label="Clear selected file">
+                                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+
+                            <button id="uploadBtn" class="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                                <span>Upload to NAS</span>
+                            </button>
+                        </div>
+
+                        <!-- Upload Progress -->
+                        <div id="uploadProgress" class="hidden">
+                            <div class="mb-3">
+                                <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="uploadProgressBar" class="h-full bg-gradient-to-r from-purple-600 to-purple-500 upload-progress" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center gap-2">
+                                <i data-lucide="loader-2" class="w-4 h-4 text-purple-500 animate-spin-slow"></i>
+                                <span id="uploadProgressText" class="text-sm text-slate-400">Uploading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Process -->
+                <div class="mb-8 pb-8 border-b border-slate-700">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-sm">
+                            2
+                        </div>
+                        <h2 class="text-lg font-semibold text-slate-100">Process Video</h2>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-4 ml-11">Select a video from your NAS and start AI transcription</p>
+
+                    <!-- Form -->
+                    <form id="processForm" class="space-y-6 ml-11">
+                        <!-- Video Selection -->
+                        <div class="form-group">
+                            <label for="videoSelect" class="block text-sm font-medium text-slate-300 mb-2">
+                                Select a Video to Process
+                            </label>
+                            <div class="flex gap-2 items-start">
+                                <div class="relative flex-1">
+                                    <select id="videoSelect" name="video" required class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 cursor-pointer appearance-none" aria-label="Video file selection">
+                                        <option value="">-- Select a video --</option>
+                                    </select>
+                                    <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"></i>
+                                </div>
+                                <!-- Refresh Button -->
+                                <button type="button" id="refreshBtn" onclick="loadVideoList()" class="flex-shrink-0 p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 rounded-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Refresh video list" title="Refresh video list">
+                                    <i id="refreshIcon" data-lucide="refresh-cw" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        <div id="fileInfo" class="mt-3 text-xs text-slate-400 bg-slate-800 rounded-lg p-3 border border-slate-700 font-mono hidden" role="status" aria-live="polite"></div>
+                    </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="submitBtn" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" aria-label="Start video processing">
+                            <i data-lucide="play-circle" class="w-5 h-5"></i>
+                            <span>Start Processing</span>
+                        </button>
+                    </form>
+
+                    <!-- Progress Tracking Section -->
+                    <div id="progressContainer" class="mt-6 ml-11 p-6 bg-slate-800 rounded-lg border border-slate-700 hidden" role="region" aria-label="Processing progress">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="activity" class="w-5 h-5 text-blue-500"></i>
+                            <strong class="text-slate-200 text-sm sm:text-base">Processing Video</strong>
+                        </div>
+                        <span id="jobId" class="text-xs text-slate-500 font-mono"></span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-4" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Processing progress">
+                        <div class="w-full h-8 bg-slate-700 rounded-full overflow-hidden">
+                            <div id="progressBar" class="h-full bg-gradient-to-r from-blue-600 to-blue-500 transition-all duration-300 flex items-center justify-center text-white text-sm font-semibold" style="width: 0%">
+                                <span id="progressPercent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Details -->
+                    <div class="space-y-2" aria-live="polite" aria-atomic="true">
+                        <div class="flex items-center gap-2">
+                            <i id="spinner" data-lucide="loader-2" class="w-4 h-4 text-blue-500 animate-spin-slow"></i>
+                            <span id="progressStage" class="text-sm font-semibold text-blue-400 capitalize">Initializing</span>
+                        </div>
+                        <p id="progressMessage" class="text-sm text-slate-400">Starting transcription...</p>
+                        <p id="eta" class="text-xs text-slate-500"></p>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="resultsContainer" class="mt-6 p-4 bg-emerald-950/30 border border-emerald-700/50 rounded-lg hidden">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>
+                            <strong class="text-emerald-400 text-sm">Transcription Complete!</strong>
+                        </div>
+                        <ul id="resultsList" class="space-y-2"></ul>
+                    </div>
+                </div>
+                </div>
+
+                <!-- STEP 3: Download -->
+                <div class="mb-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-sm">
+                            3
+                        </div>
+                        <h2 class="text-lg font-semibold text-slate-100">Download Results</h2>
+                    </div>
+                    <p class="text-sm text-slate-400 mb-4 ml-11">Access your completed transcriptions in multiple formats</p>
+
+                    <!-- Processed Videos Section -->
+                    <div id="processedVideosSection" class="ml-11 p-6 bg-slate-800 rounded-lg border border-slate-700 hidden" role="region" aria-label="Processed videos">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>
+                                <strong class="text-slate-200 text-sm sm:text-base">Completed Transcriptions</strong>
+                            </div>
+                        <button id="refreshProcessedBtn" class="text-slate-400 hover:text-slate-200 transition-colors duration-200 p-2 rounded-lg hover:bg-slate-700" aria-label="Refresh processed videos list">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div id="processedVideosList" class="space-y-3"></div>
+                    <div id="noProcessedVideos" class="text-center py-8 text-slate-400 hidden">
+                        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                        <p>No processed videos yet</p>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm" role="status" aria-live="polite"></div>
 
     <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // DOM Elements
         const videoSelect = document.getElementById('videoSelect');
         const fileInfo = document.getElementById('fileInfo');
         const submitBtn = document.getElementById('submitBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const message = document.getElementById('message');
         const form = document.getElementById('processForm');
+        const helpToggle = document.getElementById('helpToggle');
+        const helpSection = document.getElementById('helpSection');
+
+        // Progress tracking elements
+        const progressContainer = document.getElementById('progressContainer');
+        const jobId = document.getElementById('jobId');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressStage = document.getElementById('progressStage');
+        const progressMessage = document.getElementById('progressMessage');
+        const eta = document.getElementById('eta');
+        const spinner = document.getElementById('spinner');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsList = document.getElementById('resultsList');
+
+        // Upload elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const dropZoneContent = document.getElementById('dropZoneContent');
+        const selectedFileDisplay = document.getElementById('selectedFileDisplay');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const selectedFileSize = document.getElementById('selectedFileSize');
+        const clearFileBtn = document.getElementById('clearFileBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadProgressBar = document.getElementById('uploadProgressBar');
+        const uploadProgressText = document.getElementById('uploadProgressText');
+
+        // Progress tracking state
+        let currentJobId = null;
+        let progressPollInterval = null;
+        const progressUpdates = new Map();
+
+        // Upload state
+        let selectedFile = null;
+
+        // Processed videos elements
+        const processedVideosSection = document.getElementById('processedVideosSection');
+        const processedVideosList = document.getElementById('processedVideosList');
+        const noProcessedVideos = document.getElementById('noProcessedVideos');
+        const refreshProcessedBtn = document.getElementById('refreshProcessedBtn');
+
+        // Toast Notification System
+        class ToastManager {
+            constructor() {
+                this.container = document.getElementById('toastContainer');
+                this.toasts = new Map();
+            }
+
+            show(message, type = 'info', duration = 5000) {
+                const id = Date.now() + Math.random();
+                const toast = this.createToast(message, type, id);
+
+                this.container.appendChild(toast);
+                this.toasts.set(id, toast);
+
+                // Trigger animation
+                requestAnimationFrame(() => {
+                    toast.classList.add('toast-enter');
+                });
+
+                // Auto dismiss
+                if (duration > 0) {
+                    setTimeout(() => this.dismiss(id), duration);
+                }
+
+                return id;
+            }
+
+            createToast(message, type, id) {
+                const toast = document.createElement('div');
+                toast.className = 'bg-slate-800 border rounded-lg shadow-xl p-4 min-w-[300px] max-w-sm';
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+
+                const config = {
+                    success: {
+                        icon: 'check-circle',
+                        color: 'text-emerald-500',
+                        borderColor: 'border-emerald-700'
+                    },
+                    error: {
+                        icon: 'x-circle',
+                        color: 'text-red-500',
+                        borderColor: 'border-red-700'
+                    },
+                    info: {
+                        icon: 'info',
+                        color: 'text-blue-500',
+                        borderColor: 'border-blue-700'
+                    }
+                };
+
+                const { icon, color, borderColor } = config[type] || config.info;
+                toast.classList.add(borderColor);
+
+                toast.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="${icon}" class="w-5 h-5 ${color} flex-shrink-0 mt-0.5"></i>
+                        <p class="text-sm text-slate-200 flex-1">${message}</p>
+                        <button class="text-slate-400 hover:text-slate-200 transition-colors duration-200 flex-shrink-0" aria-label="Dismiss notification">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+
+                // Initialize icons
+                lucide.createIcons({ nameAttr: 'data-lucide' });
+
+                // Dismiss button
+                const dismissBtn = toast.querySelector('button');
+                dismissBtn.addEventListener('click', () => this.dismiss(id));
+
+                return toast;
+            }
+
+            dismiss(id) {
+                const toast = this.toasts.get(id);
+                if (!toast) return;
+
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                    this.toasts.delete(id);
+                }, 200);
+            }
+        }
+
+        const toastManager = new ToastManager();
+
+        // Help Toggle
+        helpToggle.addEventListener('click', () => {
+            const isExpanded = helpSection.classList.toggle('hidden');
+            helpToggle.setAttribute('aria-expanded', !isExpanded);
+        });
+
+        // Nice things to say about Peggy
+        const peggyQuotes = [
+            "Peggy sees the wholeness in every survivor",
+            "Peggy's courage to heal herself illuminates the path for others",
+            "Peggy transforms shame into strength",
+            "Peggy believes you already have everything you need to heal",
+            "Peggy creates safe spaces for difficult conversations",
+            "Peggy's wisdom comes from both her training and her journey",
+            "Peggy helps people discover their authentic selves",
+            "Peggy understands that healing happens in connection",
+            "Peggy is the Survivor Whisperer who truly listens",
+            "Peggy guides people beyond self-doubt and self-sabotage",
+            "Peggy's work helps survivors reclaim their lives",
+            "Peggy recognizes the courage it takes to seek healing",
+            "Peggy creates communities where healing can flourish",
+            "Peggy's compassion is rooted in deep understanding",
+            "Peggy sees the strength beneath the protective layers",
+            "Peggy helps people write new chapters in their stories",
+            "Peggy's approach honors both pain and possibility",
+            "Peggy believes in the power of relational healing",
+            "Peggy helps survivors find their voice",
+            "Peggy's work is a bridge from survival to thriving",
+            "Peggy teaches that boundaries are sacred and necessary",
+            "Peggy holds space for the messiest parts of healing",
+            "Peggy's dedication to healing transforms lives",
+            "Peggy reminds us that we are not defined by our trauma",
+            "Peggy helps people move from shame to self-compassion",
+            "Peggy's authenticity creates permission for others",
+            "Peggy understands the complexity of childhood trauma",
+            "Peggy's guidance helps people trust themselves again",
+            "Peggy sees potential where others see only pain",
+            "Peggy's work honors the timeline each person needs",
+            "Peggy helps survivors recognize their inherent worth",
+            "Peggy creates pathways from isolation to connection",
+            "Peggy's presence communicates safety and understanding",
+            "Peggy helps people befriend themselves again",
+            "Peggy's work dismantles the lies trauma tells",
+            "Peggy believes healing is possible for everyone",
+            "Peggy helps survivors rewrite their inner narratives",
+            "Peggy's courses offer structure for the healing journey",
+            "Peggy understands that healing isn't linear",
+            "Peggy helps people find compassion for their younger selves",
+            "Peggy's meditations guide people to inner peace",
+            "Peggy creates tools that empower survivors",
+            "Peggy helps people set boundaries without guilt",
+            "Peggy's work acknowledges both pain and resilience",
+            "Peggy helps survivors recognize their own wisdom",
+            "Peggy teaches that vulnerability is courage",
+            "Peggy's journey inspires others to begin their own",
+            "Peggy helps people trust their intuition again",
+            "Peggy sees the person beneath the symptoms",
+            "Peggy's work helps survivors feel less alone",
+            "Peggy creates space for all emotions to be valid",
+            "Peggy helps people discover their inner strength",
+            "Peggy's teaching style is both gentle and powerful",
+            "Peggy helps survivors reconnect with their bodies",
+            "Peggy understands the impact of intergenerational trauma",
+            "Peggy helps people break cycles they didn't create",
+            "Peggy's work honors the wisdom of survivors",
+            "Peggy helps people move from surviving to living",
+            "Peggy creates communities of mutual support",
+            "Peggy's authenticity dissolves shame",
+            "Peggy helps survivors trust connection again",
+            "Peggy sees the beauty in each person's journey",
+            "Peggy's work validates experiences that were minimized",
+            "Peggy helps people recognize their progress",
+            "Peggy teaches that healing is an act of self-love",
+            "Peggy's compassion extends to all parts of the healing process",
+            "Peggy helps people find meaning in their experiences",
+            "Peggy creates bridges between pain and purpose",
+            "Peggy's work helps survivors feel seen and understood",
+            "Peggy helps people develop self-trust",
+            "Peggy understands the courage required for vulnerability",
+            "Peggy's guidance helps people feel safe enough to heal",
+            "Peggy helps survivors recognize their resilience",
+            "Peggy's work transforms isolation into belonging",
+            "Peggy helps people honor their own pace",
+            "Peggy creates resources that meet people where they are",
+            "Peggy's presence reminds people they are worthy of healing",
+            "Peggy helps survivors reclaim their narratives",
+            "Peggy teaches that healing is a creative act",
+            "Peggy's work helps people integrate their experiences",
+            "Peggy helps survivors find hope in the darkness",
+            "Peggy creates pathways to self-acceptance",
+            "Peggy's wisdom helps people navigate complex emotions",
+            "Peggy helps survivors feel empowered in their healing",
+            "Peggy's work dismantles the stigma around trauma",
+            "Peggy helps people recognize their inherent goodness",
+            "Peggy creates safe containers for transformation",
+            "Peggy's approach honors the whole person",
+            "Peggy helps survivors trust their healing process",
+            "Peggy's dedication creates ripples of healing",
+            "Peggy helps people find their way back to themselves",
+            "Peggy sees the light even in the darkest stories",
+            "Peggy's work helps survivors feel less broken, more whole",
+            "Peggy helps people embrace their authentic emotions",
+            "Peggy creates communities where shame can't survive",
+            "Peggy's teaching helps people parent themselves with love",
+            "Peggy helps survivors recognize they were never the problem",
+            "Peggy's work validates the reality of trauma survivors",
+            "Peggy helps people find peace with their past",
+            "Peggy's compassion helps survivors extend compassion to themselves"
+        ];
+
+        let currentQuoteIndex = Math.floor(Math.random() * peggyQuotes.length);
+        const peggyQuoteElement = document.getElementById('peggyQuote');
+
+        // Initialize and rotate quotes
+        function showNextQuote() {
+            peggyQuoteElement.classList.add('fade');
+
+            setTimeout(() => {
+                let newIndex;
+                do {
+                    newIndex = Math.floor(Math.random() * peggyQuotes.length);
+                } while (newIndex === currentQuoteIndex && peggyQuotes.length > 1);
+
+                currentQuoteIndex = newIndex;
+                peggyQuoteElement.textContent = peggyQuotes[currentQuoteIndex];
+                peggyQuoteElement.classList.remove('fade');
+            }, 500);
+        }
+
+        // Show first quote
+        peggyQuoteElement.textContent = peggyQuotes[currentQuoteIndex];
+
+        // Rotate quotes every 30 seconds
+        setInterval(showNextQuote, 30000);
+
+        // Load processed videos
+        async function loadProcessedVideos() {
+            const refreshIcon = refreshProcessedBtn.querySelector('[data-lucide]');
+            if (refreshIcon) {
+                refreshIcon.classList.add('animate-spin-slow');
+            }
+
+            try {
+                const response = await fetch('https://n8n.lan/webhook/list-processed', {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load processed videos');
+                }
+
+                const data = await response.json();
+
+                processedVideosList.innerHTML = '';
+
+                if (data.processed_videos && data.processed_videos.length > 0) {
+                    processedVideosSection.classList.remove('hidden');
+                    noProcessedVideos.classList.add('hidden');
+
+                    data.processed_videos.forEach(video => {
+                        const videoCard = document.createElement('div');
+                        videoCard.className = 'bg-slate-900 border border-slate-700 rounded-lg p-4';
+
+                        videoCard.innerHTML = `
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-start gap-3 flex-1">
+                                    <i data-lucide="film" class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="text-sm font-medium text-slate-200 truncate" title="${escapeHtml(video.video_filename)}">${escapeHtml(video.video_filename)}</h4>
+                                        <p class="text-xs text-slate-400 mt-1">${escapeHtml(video.video_size)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.txt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                                    <span>TXT</span>
+                                </a>
+                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.srt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                    <i data-lucide="subtitles" class="w-3.5 h-3.5"></i>
+                                    <span>SRT</span>
+                                </a>
+                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.json" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                    <i data-lucide="code" class="w-3.5 h-3.5"></i>
+                                    <span>JSON</span>
+                                </a>
+                            </div>
+                        `;
+
+                        processedVideosList.appendChild(videoCard);
+                    });
+
+                    lucide.createIcons();
+                } else {
+                    processedVideosSection.classList.remove('hidden');
+                    processedVideosList.classList.add('hidden');
+                    noProcessedVideos.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading processed videos:', error);
+                toastManager.show('Failed to load processed videos: ' + error.message, 'error');
+            } finally {
+                const refreshIcon = refreshProcessedBtn.querySelector('[data-lucide]');
+                if (refreshIcon) {
+                    refreshIcon.classList.remove('animate-spin-slow');
+                }
+            }
+        }
+
+        // Refresh processed videos button
+        refreshProcessedBtn.addEventListener('click', loadProcessedVideos);
 
         // Load video list on page load
         loadVideoList();
+        loadProcessedVideos();
+
+        // Note: Storage event listener for cross-tab communication
+        // This only fires when ANOTHER tab/window updates localStorage, not the current one
+        // Polling mechanism (startProgressPolling) is the primary progress update method
+        window.addEventListener('storage', (e) => {
+            if (e.key && e.key.startsWith('progress_')) {
+                const jobIdFromStorage = e.key.replace('progress_', '');
+                const update = JSON.parse(e.newValue);
+                handleProgressUpdate(update);
+            }
+        });
+
+        // HTML escape helper for XSS prevention
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Format file size for display
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Validate file type
+        function isValidFileType(file) {
+            const validTypes = [
+                'video/mp4', 'video/avi', 'video/quicktime', 'video/x-matroska', 'video/webm',
+                'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/flac', 'audio/ogg', 'audio/x-m4a'
+            ];
+            const validExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.mp3', '.wav', '.m4a', '.flac', '.ogg', '.webm'];
+            const fileName = file.name.toLowerCase();
+            const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+            const hasValidType = validTypes.includes(file.type);
+
+            return hasValidExtension || hasValidType;
+        }
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (!file) return;
+
+            // Validate file type
+            if (!isValidFileType(file)) {
+                toastManager.show('Invalid file type. Please select a video or audio file.', 'error');
+                return;
+            }
+
+            // Validate file size (max 10GB)
+            const maxSize = 10 * 1024 * 1024 * 1024;
+            if (file.size > maxSize) {
+                toastManager.show('File is too large. Maximum size is 10GB.', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            selectedFileName.textContent = file.name;
+            selectedFileSize.textContent = formatFileSize(file.size);
+
+            dropZoneContent.classList.add('hidden');
+            selectedFileDisplay.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // Clear file selection
+        function clearFileSelection() {
+            selectedFile = null;
+            fileInput.value = '';
+            dropZoneContent.classList.remove('hidden');
+            selectedFileDisplay.classList.add('hidden');
+            uploadProgress.classList.add('hidden');
+            uploadProgressBar.style.width = '0%';
+        }
+
+        // Upload file to NAS
+        async function uploadFile() {
+            if (!selectedFile) {
+                toastManager.show('No file selected', 'error');
+                return;
+            }
+
+            uploadBtn.disabled = true;
+            selectedFileDisplay.classList.add('hidden');
+            uploadProgress.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        uploadProgressBar.style.width = percentComplete + '%';
+                        uploadProgressText.textContent = `Uploading... ${percentComplete}%`;
+                    }
+                });
+
+                // Handle completion
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const response = JSON.parse(xhr.responseText);
+                        toastManager.show('File uploaded successfully!', 'success');
+                        clearFileSelection();
+                        uploadBtn.disabled = false;
+
+                        // Refresh video list to show newly uploaded file
+                        setTimeout(() => {
+                            loadVideoList();
+                        }, 1000);
+                    } else {
+                        let errorMessage = 'Upload failed';
+                        try {
+                            const errorResponse = JSON.parse(xhr.responseText);
+                            errorMessage = errorResponse.message || errorMessage;
+                        } catch (e) {
+                            // Use default error message
+                        }
+                        toastManager.show(errorMessage, 'error');
+                        uploadBtn.disabled = false;
+                        clearFileSelection();
+                    }
+                });
+
+                // Handle errors
+                xhr.addEventListener('error', () => {
+                    toastManager.show('Upload failed: Network error', 'error');
+                    uploadBtn.disabled = false;
+                    clearFileSelection();
+                });
+
+                xhr.addEventListener('abort', () => {
+                    toastManager.show('Upload cancelled', 'info');
+                    uploadBtn.disabled = false;
+                    clearFileSelection();
+                });
+
+                // Send the request
+                xhr.open('POST', 'https://n8n.lan/webhook/upload-video', true);
+                xhr.send(formData);
+
+            } catch (error) {
+                toastManager.show('Upload failed: ' + error.message, 'error');
+                uploadBtn.disabled = false;
+                clearFileSelection();
+            }
+        }
+
+        // Drag and drop event handlers
+        dropZone.addEventListener('click', () => {
+            if (!selectedFile) {
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileSelect(file);
+            }
+        });
+
+        clearFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearFileSelection();
+        });
+
+        uploadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            uploadFile();
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
 
         // Update file info when selection changes
         videoSelect.addEventListener('change', function() {
             const selectedOption = videoSelect.options[videoSelect.selectedIndex];
             if (selectedOption.value) {
                 const size = selectedOption.dataset.size;
-                fileInfo.textContent = `Size: ${size}`;
+                const fullPath = selectedOption.value;
+
+                // Sanitize user-provided data to prevent XSS
+                fileInfo.innerHTML = `
+                    <div class="space-y-1">
+                        <div><strong class="text-slate-300">Path:</strong> <span class="text-slate-400">${escapeHtml(fullPath)}</span></div>
+                        <div><strong class="text-slate-300">Size:</strong> <span class="text-slate-400">${escapeHtml(size)}</span></div>
+                    </div>
+                `;
+                fileInfo.classList.remove('hidden');
             } else {
-                fileInfo.textContent = '';
+                fileInfo.classList.add('hidden');
             }
         });
 
-        // Load available videos from NAS
+        // Load available videos
         async function loadVideoList() {
             refreshBtn.disabled = true;
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (refreshIcon) {
+                refreshIcon.classList.add('animate-spin-slow');
+            }
+
             videoSelect.innerHTML = '<option value="">Loading...</option>';
-            message.style.display = 'none';
+
+            // Track start time for minimum display duration
+            const startTime = Date.now();
 
             try {
                 const response = await fetch('https://n8n.lan/webhook/list-videos', {
@@ -216,26 +935,48 @@
 
                 const data = await response.json();
 
-                // Clear and populate select
+                // Ensure at least 1 second has passed for visual feedback
+                const elapsedTime = Date.now() - startTime;
+                const remainingTime = Math.max(0, 1000 - elapsedTime);
+                if (remainingTime > 0) {
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+
                 videoSelect.innerHTML = '<option value="">-- Select a video --</option>';
 
                 if (data.videos && data.videos.length > 0) {
                     data.videos.forEach(video => {
                         const option = document.createElement('option');
                         option.value = video.filepath;
-                        option.textContent = video.filename;
+                        const displayName = video.filename || video.filepath.split(/[\\/]/).pop();
+                        option.textContent = displayName;
+                        option.title = video.filepath;
                         option.dataset.size = video.size;
+                        option.dataset.fullpath = video.filepath;
                         videoSelect.appendChild(option);
                     });
+
+                    toastManager.show(`Loaded ${data.videos.length} video(s)`, 'success', 3000);
                 } else {
                     videoSelect.innerHTML = '<option value="">No videos found</option>';
-                    showMessage('No videos found in the NAS directory', 'info');
+                    toastManager.show('No videos found in the NAS directory', 'info');
                 }
             } catch (error) {
+                // Ensure at least 1 second has passed even on error
+                const elapsedTime = Date.now() - startTime;
+                const remainingTime = Math.max(0, 1000 - elapsedTime);
+                if (remainingTime > 0) {
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+
                 videoSelect.innerHTML = '<option value="">Error loading videos</option>';
-                showMessage('Failed to load video list: ' + error.message, 'error');
+                toastManager.show('Failed to load video list: ' + error.message, 'error');
             } finally {
                 refreshBtn.disabled = false;
+                const refreshIcon = document.getElementById('refreshIcon');
+                if (refreshIcon) {
+                    refreshIcon.classList.remove('animate-spin-slow');
+                }
             }
         }
 
@@ -245,12 +986,17 @@
 
             const filepath = videoSelect.value;
             if (!filepath) {
-                showMessage('Please select a video', 'error');
+                toastManager.show('Please select a video', 'error');
                 return;
             }
 
             submitBtn.disabled = true;
-            message.style.display = 'none';
+            const submitIcon = submitBtn.querySelector('[data-lucide="play-circle"]');
+            submitIcon.setAttribute('data-lucide', 'loader-2');
+            lucide.createIcons();
+            submitIcon.classList.add('animate-spin-slow');
+
+            const callbackUrl = 'http://progress-tracker:5555/api/progress-callback';
 
             try {
                 const response = await fetch('https://n8n.lan/webhook/process-video-file', {
@@ -259,32 +1005,180 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        filepath: filepath
+                        filepath: filepath,
+                        callback_url: callbackUrl
                     })
                 });
 
                 if (response.ok) {
                     const result = await response.json();
-                    showMessage('Video processing started successfully! Check your processed folder for results.', 'success');
-                    form.reset();
-                    fileInfo.textContent = '';
+                    currentJobId = result.job_id;
+
+                    showProgressTracking(result.job_id);
+                    startProgressPolling(result.job_id);
+
+                    toastManager.show('Video processing started! Job ID: ' + result.job_id, 'success');
                 } else {
                     const error = await response.json();
-                    showMessage('Processing failed: ' + (error.message || 'Unknown error'), 'error');
+                    toastManager.show('Processing failed: ' + (error.message || 'Unknown error'), 'error');
+                    submitBtn.disabled = false;
+                    submitIcon.setAttribute('data-lucide', 'play-circle');
+                    submitIcon.classList.remove('animate-spin-slow');
+                    lucide.createIcons();
                 }
             } catch (error) {
-                showMessage('An error occurred: ' + error.message, 'error');
-            } finally {
+                toastManager.show('An error occurred: ' + error.message, 'error');
                 submitBtn.disabled = false;
+                submitIcon.setAttribute('data-lucide', 'play-circle');
+                submitIcon.classList.remove('animate-spin-slow');
+                lucide.createIcons();
             }
         });
 
-        function showMessage(text, type) {
-            message.textContent = text;
-            message.className = 'message ' + type;
-            message.style.display = 'block';
+        function showProgressTracking(jobIdValue) {
+            progressContainer.classList.remove('hidden');
+            jobId.textContent = `Job ID: ${jobIdValue}`;
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressStage.textContent = 'Starting';
+            progressMessage.textContent = 'Initializing transcription...';
+            eta.textContent = '';
+            spinner.classList.remove('hidden');
+            resultsContainer.classList.add('hidden');
+            resultsList.innerHTML = '';
+
+            // Update ARIA attributes
+            progressContainer.setAttribute('aria-valuenow', '0');
+        }
+
+        function handleProgressUpdate(update) {
+            if (!update || update.job_id !== currentJobId) {
+                return;
+            }
+
+            progressUpdates.set(update.job_id, update);
+
+            const progress = update.progress || 0;
+            progressBar.style.width = progress + '%';
+            progressPercent.textContent = progress + '%';
+            progressContainer.setAttribute('aria-valuenow', progress);
+
+            if (update.stage) {
+                progressStage.textContent = update.stage;
+            }
+            if (update.message) {
+                progressMessage.textContent = update.message;
+            }
+
+            if (update.eta_seconds) {
+                const minutes = Math.floor(update.eta_seconds / 60);
+                const seconds = update.eta_seconds % 60;
+                eta.textContent = `Estimated time remaining: ${minutes}m ${seconds}s`;
+            } else {
+                eta.textContent = '';
+            }
+
+            if (update.status === 'complete') {
+                spinner.classList.add('hidden');
+                progressBar.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressContainer.setAttribute('aria-valuenow', '100');
+
+                if (update.result && update.result.files) {
+                    showResults(update.result);
+                }
+
+                stopProgressPolling();
+                submitBtn.disabled = false;
+                const submitIcon = submitBtn.querySelector('[data-lucide]');
+                submitIcon.setAttribute('data-lucide', 'play-circle');
+                submitIcon.classList.remove('animate-spin-slow');
+                lucide.createIcons();
+
+                toastManager.show('Transcription completed successfully!', 'success');
+
+                // Reload both video lists to reflect the processed video
+                setTimeout(() => {
+                    loadVideoList();
+                    loadProcessedVideos();
+                }, 1000);
+            }
+
+            if (update.status === 'error') {
+                spinner.classList.add('hidden');
+                stopProgressPolling();
+                submitBtn.disabled = false;
+                const submitIcon = submitBtn.querySelector('[data-lucide]');
+                submitIcon.setAttribute('data-lucide', 'play-circle');
+                submitIcon.classList.remove('animate-spin-slow');
+                lucide.createIcons();
+
+                toastManager.show('Transcription failed: ' + update.message, 'error');
+
+                // Hide progress container after 5 seconds to allow retry
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        function showResults(result) {
+            resultsContainer.classList.remove('hidden');
+            resultsList.innerHTML = '';
+
+            if (result.files) {
+                const files = result.files;
+                const fileTypes = [
+                    { key: 'txt', icon: 'file-text', label: 'Plain Text Transcript' },
+                    { key: 'srt', icon: 'subtitles', label: 'Subtitle File (SRT)' },
+                    { key: 'json', icon: 'code', label: 'JSON with Timestamps' }
+                ];
+
+                fileTypes.forEach(({ key, icon, label }) => {
+                    if (files[key]) {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <a href="${files[key]}" download class="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors duration-200 text-sm">
+                                <i data-lucide="${icon}" class="w-4 h-4"></i>
+                                <span>${label}</span>
+                            </a>
+                        `;
+                        resultsList.appendChild(li);
+                    }
+                });
+
+                lucide.createIcons();
+            }
+        }
+
+        function startProgressPolling(jobIdValue) {
+            progressPollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/progress/${jobIdValue}`);
+                    if (response.ok) {
+                        const update = await response.json();
+                        handleProgressUpdate(update);
+                    }
+                } catch (error) {
+                    console.error('Error polling for progress:', error);
+                }
+            }, 2000);
+        }
+
+        function stopProgressPolling() {
+            if (progressPollInterval) {
+                clearInterval(progressPollInterval);
+                progressPollInterval = null;
+            }
+        }
+
+        // Development: Expose for testing
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.simulateProgress = function(update) {
+                localStorage.setItem(`progress_${update.job_id}`, JSON.stringify(update));
+                handleProgressUpdate(update);
+            };
         }
     </script>
 </body>
 </html>
-s

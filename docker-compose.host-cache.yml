@@ -1,0 +1,33 @@
+# Docker Compose Override for Host-Level Cache
+# Use this to share cache across all projects on the same machine
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.host-cache.yml up -d
+#
+# Benefits:
+#   - Shared HuggingFace models across all projects
+#   - Shared PyTorch model zoo across all projects
+#   - One download, multiple projects benefit
+#   - Survives docker volume prune
+
+services:
+  whisperx:
+    volumes:
+      - /opt/ai-cache/huggingface:/data/.huggingface
+      - /opt/ai-cache/torch:/data/.torch
+
+  comfyui:
+    volumes:
+      - /opt/ai-cache/huggingface:/data/.huggingface
+      - /opt/ai-cache/torch:/data/.torch
+
+  crawl4ai:
+    volumes:
+      - /opt/ai-cache/huggingface:/data/.huggingface
+      - /opt/ai-cache/torch:/data/.torch
+
+  # Uncomment if using infinitetalk
+  # infinitetalk:
+  #   volumes:
+  #     - /opt/ai-cache/huggingface:/data/.huggingface
+  #     - /opt/ai-cache/torch:/data/.torch

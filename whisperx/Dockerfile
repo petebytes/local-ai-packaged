@@ -1,81 +1,67 @@
-# WhisperX Docker Image - Built from Official Sources
-# Base image: NVIDIA CUDA 13.0 runtime on Ubuntu 22.04
-# Requires NVIDIA driver version 580.65.06 or higher
-FROM nvidia/cuda:13.0.1-runtime-ubuntu22.04
+# syntax=docker/dockerfile:1.12
+# WhisperX Docker Image - Flexible CUDA Version Testing with BuildKit Cache Optimization
+#
+# QUICK TEST DIFFERENT CUDA VERSIONS:
+#   docker compose build --build-arg CUDA_VERSION=12.8 whisperx
+#   docker compose build --build-arg CUDA_VERSION=13.0 whisperx
+#   docker compose build --build-arg CUDA_VERSION=12.1 whisperx
+#
+# SUPPORTED CUDA VERSIONS:
+#   12.1 = Legacy stable (older GPUs)
+#   12.8 = RTX 5090 RECOMMENDED ✅ (Blackwell - PyTorch 2.7.1+cu128 official)
+#   12.9 = NOT SUPPORTED ❌ (no PyTorch cu129 wheels, falls back to cu126)
+#   13.0 = NOT SUPPORTED ❌ (no PyTorch cu130 wheels, falls back to cu126)
+#   13.1 = Experimental (wait for PyTorch 2.8+ support)
+#
+# RTX 5090 Testing Results (Oct 2025):
+#   ✅ CUDA 12.8: Works perfectly (2.52s, 17.86% WER)
+#   ❌ CUDA 12.9/13.0: Kernel error - PyTorch version mismatch
+#
+# Build base images first: ./scripts/build-cuda-base.sh all-versions
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
+ARG CUDA_VERSION=12.8
+FROM cuda-base:runtime-${CUDA_VERSION}
 
-# Install wget and cuDNN for CUDA 13.0
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget && \
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
-    dpkg -i cuda-keyring_1.0-1_all.deb && \
-    apt-get update && \
-    apt-get install -y cudnn9-cuda-13 && \
-    rm -rf /var/lib/apt/lists/* cuda-keyring_1.0-1_all.deb
+LABEL maintainer="Local AI Packaged"
+LABEL description="WhisperX transcription service - flexible CUDA testing"
+LABEL service.type="transcription"
 
-# Set library path for cuDNN
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+# Metadata - base image provides CUDA + PyTorch
+# Base includes: python3.10, pip, ffmpeg, git, numpy, requests
 
-# Install system dependencies
-# - python3, python3-pip: Python runtime and package manager
-# - ffmpeg: Required for audio processing
-# - git: Needed to clone WhisperX from GitHub
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3.10 \
-    python3-pip \
-    ffmpeg \
-    git && \
-    rm -rf /var/lib/apt/lists/*
+# Set cache environment variables for persistent model storage
+ENV HF_HOME=/data/.huggingface
+ENV TRANSFORMERS_CACHE=/data/.huggingface/transformers
+ENV TORCH_HOME=/data/.torch
 
-# Upgrade pip to latest version
-RUN pip3 install --no-cache-dir --upgrade pip
+# Install WhisperX from git with cache mount - pinned to v3.7.2 (last working version)
+# v3.7.2 (Oct 12, 2024) is compatible with transformers 4.57.1 and PyTorch 2.7.1
+# Later versions have breaking changes with Pipeline imports
+# Use shared cache ID to share pip cache with Kokoro and other services
+RUN --mount=type=cache,id=pip-cache-shared,target=/root/.cache/pip,sharing=shared \
+    pip3 install "git+https://github.com/m-bain/whisperx.git@v3.7.2"
 
-# Install PyTorch with CUDA 12.8 support from official PyTorch repository
-# Version 2.7.1 is the latest stable release with CUDA 13.0 compatibility
-RUN pip3 install --no-cache-dir \
-    torch==2.7.1 \
-    torchvision==0.22.1 \
-    torchaudio==2.7.1 \
-    --index-url https://download.pytorch.org/whl/cu128
-
-# Install WhisperX directly from official GitHub repository
-# Using pip install from git ensures we get the latest stable version
-RUN pip3 install --no-cache-dir git+https://github.com/m-bain/whisperx.git
-
-# Install FastAPI and uvicorn for API server
-RUN pip3 install --no-cache-dir \
+# Install FastAPI and related web server dependencies with cache mount
+RUN --mount=type=cache,id=pip-cache-shared,target=/root/.cache/pip,sharing=shared \
+    pip3 install \
     fastapi==0.109.0 \
     uvicorn==0.27.0 \
     python-multipart==0.0.6 \
     pydantic==2.5.3
 
-# Install additional dependencies for enhanced features
-# - numpy: Array processing for audio
-# - requests: HTTP client for health checks
-RUN pip3 install --no-cache-dir \
-    numpy>=1.24.0 \
-    requests>=2.31.0
+# Create application directories including cache directories
+RUN mkdir -p /app/uploads /root/.cache /data/.huggingface /data/.torch /app/shared/temp /app/shared/input /app/shared/output
 
-# Create working directory
 WORKDIR /app
 
-# Copy all Python modules
+# Copy application code LAST (changes most frequently)
 COPY api_server.py /app/api_server.py
 COPY ffmpeg_processor.py /app/ffmpeg_processor.py
 COPY video_segmenter.py /app/video_segmenter.py
 
-# Create directories for file uploads, model cache, and shared processing
-RUN mkdir -p /app/uploads /root/.cache /app/shared/temp /app/shared/input /app/shared/output
-
-# Expose API port
 EXPOSE 8000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python3 -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
 
-# Run the API server
 CMD ["python3", "-u", "api_server.py"]

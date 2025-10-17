@@ -15,11 +15,19 @@ volumes:
     driver: local
   whisperx-cache:
     driver: local
+  registry-cache:
+    driver: local
+  # Shared AI model caches - reduces downloads across services
+  hf-cache:
+    driver: local
+  torch-cache:
+    driver: local
+  comfyui-models:
+    driver: local
 
 networks:
   localai_default:
-    name: localai_default
-    external: true
+    driver: bridge
 
 x-n8n: &service-n8n
   build:
@@ -52,15 +60,7 @@ services:
       - ./www:/usr/share/nginx/html:ro
     networks:
       - localai_default
-    depends_on:
-      - n8n
-      - open-webui
-      - kokoro-fastapi-gpu
-      - nocodb
-      - crawl4ai
-      - whisperx
-      - comfyui
-      - infinitetalk
+    # No depends_on - nginx should always be available even if backend services fail
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -78,18 +78,33 @@ services:
       - AUDIO_TTS_URL=http://kokoro-fastapi-gpu:8880
 
   kokoro-fastapi-gpu:
+    build:
+      context: ./kokoro-build
+      dockerfile: docker/gpu/Dockerfile.rtx5090
+      args:
+        CUDA_VERSION: "12.8"  # RTX 5090 requires CUDA 12.8 with PyTorch 2.7.1+cu128
     expose:
       - 8880
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:v0.2.2
     restart: always
     networks:
       - localai_default
+    volumes:
+      # Shared cache volumes - prevent re-downloading models
+      - hf-cache:/data/.huggingface
+      - torch-cache:/data/.torch
+    environment:
+      - PYTHONPATH=/app:/app/api
+      - USE_GPU=true
+      - PYTHONUNBUFFERED=1
+      # Cache optimization
+      - HF_HOME=/data/.huggingface
+      - TORCH_HOME=/data/.torch
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              count: 1  # Single RTX 5090
               capabilities:
                 - gpu
 
@@ -103,6 +118,10 @@ services:
       - 8000 # Expose port internally for nginx proxy
     networks:
       - localai_default
+    volumes:
+      # Shared cache volumes
+      - hf-cache:/data/.huggingface
+      - torch-cache:/data/.torch
     environment:
       # Define API keys in your .env file or uncomment and set here
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -112,21 +131,27 @@ services:
       - APP_HOST=0.0.0.0
       - APP_PORT=8000
       - CRAWL4AI_API_KEY=${CRAWL4AI_API_KEY:-}
-    # volumes:
-    #   - ./crawl4ai/custom-config.yml:/app/config.yml # Optional: Mount custom config if needed
-    #   - ./crawl4ai/.llm.env:/.llm.env # Optional: Mount env file directly
+      # RTX 5090 GPU optimizations
+      - MAX_CONCURRENT_TASKS=8  # Increased for RTX 5090 performance
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      # Cache optimization
+      - HF_HOME=/data/.huggingface
+      - TORCH_HOME=/data/.torch
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all # Utilize all available GPUs
+              count: 1  # Single RTX 5090
               capabilities: [gpu]
 
   whisperx:
     build:
       context: ./whisperx
       dockerfile: Dockerfile
+      args:
+        CUDA_VERSION: "12.8"  # RTX 5090 requires CUDA 12.8 with PyTorch 2.7.1+cu128
     container_name: whisperx
     restart: unless-stopped
     expose:
@@ -136,18 +161,46 @@ services:
     volumes:
       - whisperx-cache:/root/.cache
       - ./shared:/app/shared
+      - ./whisperx:/app  # Mount source code for faster development iteration
+      # Shared cache volumes - prevent re-downloading models
+      - hf-cache:/data/.huggingface
+      - torch-cache:/data/.torch
     environment:
       - COMPUTE_TYPE=float16
-      - BATCH_SIZE=16
+      - BATCH_SIZE=32  # Increased for RTX 5090's 32GB VRAM and faster memory bandwidth
       - HF_TOKEN=${HF_TOKEN:-}
       - LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+      # Cache optimization - share models across services
+      - HF_HOME=/data/.huggingface
+      - TRANSFORMERS_CACHE=/data/.huggingface/transformers
+      - TORCH_HOME=/data/.torch
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              count: 1  # Single RTX 5090
               capabilities: [gpu]
+
+  progress-tracker:
+    image: python:3.11-alpine
+    container_name: progress-tracker
+    restart: unless-stopped
+    expose:
+      - 5555
+    networks:
+      - localai_default
+    volumes:
+      - ./www/progress_tracker.py:/app.py:ro
+    command: >
+      /bin/sh -c "
+        pip install --no-cache-dir flask flask-cors &&
+        python /app.py"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5555/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   comfyui:
     image: ghcr.io/ai-dock/comfyui:latest
@@ -160,38 +213,56 @@ services:
     volumes:
       - ./ComfyUI:/workspace/ComfyUI
       - ./shared:/app/shared
+      # Persistent model storage - prevents re-downloading large SD models
+      - comfyui-models:/workspace/ComfyUI/models
+      # Shared cache volumes
+      - hf-cache:/data/.huggingface
+      - torch-cache:/data/.torch
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=0  # Single RTX 5090 (device 0)
+      - COMFYUI_ARGS=--use-sage-attention --fast  # RTX 5090 optimizations
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # Better VRAM management
+      # Cache optimization
+      - HF_HOME=/data/.huggingface
+      - TORCH_HOME=/data/.torch
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              count: 1  # Single RTX 5090
               capabilities: [gpu]
 
-  infinitetalk:
-    build:
-      context: /home/ghar/code/InfiniteTalk
-      dockerfile: /home/ghar/code/local-ai-packaged/infinitetalk/Dockerfile
-    container_name: infinitetalk
-    restart: unless-stopped
-    expose:
-      - 8418
-    networks:
-      - localai_default
-    volumes:
-      - /home/ghar/code/InfiniteTalk:/app
-      - ./shared:/app/shared
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=0
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['1']
-              capabilities: [gpu]
+  # infinitetalk:
+  #   build:
+  #     context: /home/ghar/code/InfiniteTalk
+  #     dockerfile: /home/ghar/code/local-ai-packaged/infinitetalk/Dockerfile
+  #   container_name: infinitetalk
+  #   restart: unless-stopped
+  #   expose:
+  #     - 8418
+  #   networks:
+  #     - localai_default
+  #   volumes:
+  #     - /home/ghar/code/InfiniteTalk:/app
+  #     - ./shared:/app/shared
+  #     # Shared cache volumes
+  #     - hf-cache:/data/.huggingface
+  #     - torch-cache:/data/.torch
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=0  # Single RTX 5090
+  #     - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # Better VRAM management
+  #     # Cache optimization
+  #     - HF_HOME=/data/.huggingface
+  #     - TORCH_HOME=/data/.torch
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1  # Single RTX 5090
+  #             capabilities: [gpu]
+
 
   # n8n-import:
   #   <<: *service-n8n
@@ -307,3 +378,22 @@ services:
         . /venv/bin/activate &&
         pip install --no-cache-dir flask flask-cors &&
         python /app.py"
+
+  # Docker Registry Pull-Through Cache
+  # Caches all pulled Docker images locally to speed up rebuilds
+  # Configure Docker daemon to use this cache: /etc/docker/daemon.json
+  # { "registry-mirrors": ["http://localhost:5000"] }
+  registry-cache:
+    image: registry:2
+    container_name: registry-cache
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-cache:/var/lib/registry
+    networks:
+      - localai_default

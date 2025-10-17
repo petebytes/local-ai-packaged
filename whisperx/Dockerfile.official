@@ -1,0 +1,73 @@
+# WhisperX - Using Official NVIDIA CUDA Images
+# No base image building required - pulls directly from Docker Hub
+#
+# QUICK TEST DIFFERENT CUDA VERSIONS:
+#   docker compose -f docker-compose.official.yml build whisperx
+#   CUDA_VERSION=12.8.1 docker compose -f docker-compose.official.yml build whisperx
+#   CUDA_VERSION=12.9.1 docker compose -f docker-compose.official.yml build whisperx
+#
+# Available official CUDA versions:
+#   12.1.0, 12.8.0, 12.8.1, 12.9.0, 12.9.1, 13.0.0
+
+ARG CUDA_VERSION=13.0.0
+ARG UBUNTU_VERSION=22.04
+
+# Pull official NVIDIA CUDA image directly
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-runtime-ubuntu${UBUNTU_VERSION}
+
+LABEL maintainer="Local AI Packaged"
+LABEL description="WhisperX with official NVIDIA CUDA images"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3-pip \
+    ffmpeg \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
+
+# Install PyTorch with matching CUDA version
+RUN CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1,2 | tr -d .); \
+    pip3 install --no-cache-dir \
+    torch==2.7.1 \
+    torchvision==0.22.1 \
+    torchaudio==2.7.1 \
+    --index-url https://download.pytorch.org/whl/cu${CUDA_MAJOR}
+
+# Install WhisperX
+RUN pip3 install --no-cache-dir git+https://github.com/m-bain/whisperx.git
+
+# Install FastAPI
+RUN pip3 install --no-cache-dir \
+    fastapi==0.109.0 \
+    uvicorn==0.27.0 \
+    python-multipart==0.0.6 \
+    pydantic==2.5.3 \
+    requests>=2.31.0
+
+# Create directories
+RUN mkdir -p /app/uploads /root/.cache /app/shared/temp /app/shared/input /app/shared/output
+
+WORKDIR /app
+
+# Copy application code (from whisperx/ context)
+COPY whisperx/api_server.py /app/api_server.py
+COPY whisperx/ffmpeg_processor.py /app/ffmpeg_processor.py
+COPY whisperx/video_segmenter.py /app/video_segmenter.py
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python3 -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+
+CMD ["python3", "-u", "api_server.py"]

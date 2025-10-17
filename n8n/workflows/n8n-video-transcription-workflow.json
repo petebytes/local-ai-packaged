@@ -1,0 +1,797 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "list-videos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -256
+      ],
+      "id": "d72d8458-bef9-41e8-ab2a-44ff3f8b1aee",
+      "name": "List Videos Webhook",
+      "webhookId": "list-videos-webhook-id"
+    },
+    {
+      "parameters": {
+        "command": "find /nas/PeggysExtraStorage/videos-to-process -maxdepth 1 -type f \\( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.avi' -o -iname '*.mkv' \\) -exec sh -c 'for f; do printf \"%s|%s|%s\\n\" \"$(basename \"$f\")\" \"$f\" \"$(stat -c %s \"$f\")\"; done' sh {} +"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -256
+      ],
+      "id": "3d4225ed-7a8d-432f-8f4c-6fe3554fb373",
+      "name": "List Video Files"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.stdout;\nconst lines = output.trim().split('\\n').filter(line => line.length > 0);\n\n// Helper function to convert bytes to human-readable format\nfunction formatBytes(bytes) {\n  if (bytes === 0) return '0 B';\n  const k = 1024;\n  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];\n  const i = Math.floor(Math.log(bytes) / Math.log(k));\n  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];\n}\n\nconst videos = lines.map(line => {\n  const [filename, filepath, sizeBytes] = line.split('|');\n  return {\n    filename: filename,\n    filepath: filepath,\n    size: formatBytes(parseInt(sizeBytes))\n  };\n});\n\nreturn [{\n  json: {\n    videos: videos\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -256
+      ],
+      "id": "9b7e8dc2-cdad-4a76-9cee-e6411cf7b238",
+      "name": "Parse File List"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        -256
+      ],
+      "id": "ff81b752-004f-49a5-92be-5c11571a3993",
+      "name": "Return Video List"
+    },
+    {
+      "parameters": {
+        "path": "list-processed",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -560
+      ],
+      "id": "list-processed-webhook",
+      "name": "List Processed Webhook",
+      "webhookId": "list-processed-webhook-id"
+    },
+    {
+      "parameters": {
+        "command": "find /nas/PeggysExtraStorage/videos-to-process/processed -type f \\( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.avi' -o -iname '*.mkv' \\) -exec sh -c 'for f; do basename=\"$(basename \"$f\" | sed \"s/\\.[^.]*$//\")\"; printf \"%s|%s|%s\\n\" \"$(basename \"$f\")\" \"$f\" \"$(stat -c %s \"$f\")\"; done' sh {} +"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -560
+      ],
+      "id": "list-processed-files",
+      "name": "List Processed Files"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.stdout;\nconst lines = output.trim().split('\\n').filter(line => line.length > 0);\n\n// Helper function to convert bytes to human-readable format\nfunction formatBytes(bytes) {\n  if (bytes === 0) return '0 B';\n  const k = 1024;\n  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];\n  const i = Math.floor(Math.log(bytes) / Math.log(k));\n  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];\n}\n\nconst processed = lines.map(line => {\n  const [filename, filepath, sizeBytes] = line.split('|');\n  // Remove file extension to get base name for transcription files\n  const baseName = filename.replace(/\\.[^.]+$/, '');\n  const processedDir = '/nas/PeggysExtraStorage/videos-to-process/processed';\n  \n  return {\n    video_filename: filename,\n    video_filepath: filepath,\n    video_size: formatBytes(parseInt(sizeBytes)),\n    base_name: baseName,\n    transcription_files: {\n      txt: `${processedDir}/${baseName}.txt`,\n      srt: `${processedDir}/${baseName}.srt`,\n      json: `${processedDir}/${baseName}.json`\n    }\n  };\n});\n\nreturn [{\n  json: {\n    processed_videos: processed\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -560
+      ],
+      "id": "parse-processed-list",
+      "name": "Parse Processed List"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        -560
+      ],
+      "id": "return-processed-list",
+      "name": "Return Processed List"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-video-file",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        48
+      ],
+      "id": "7dcf4929-e249-4746-b2cf-852994fc3bc4",
+      "name": "Process Video Webhook",
+      "webhookId": "process-video-webhook-id"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract job configuration and callback URL\nconst webhookData = $input.first().json;\nconst filepath = webhookData.body.filepath;\nconst callbackUrl = webhookData.body.callback_url;\nconst jobId = $execution.id;\n\nreturn [{\n  json: {\n    job_id: jobId,\n    filepath: filepath,\n    callback_url: callbackUrl || null,\n    start_time: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        48
+      ],
+      "id": "job-init-node",
+      "name": "Initialize Job"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"job_id\": \"{{ $json.job_id }}\", \"status\": \"processing\", \"message\": \"Video transcription started\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        -80
+      ],
+      "id": "respond-job-id",
+      "name": "Respond with Job ID"
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $('Initialize Job').item.json.filepath }}"
+      },
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        320,
+        160
+      ],
+      "id": "ebd290c3-cb00-4451-9d60-41afae15ae91",
+      "name": "Read Video from NAS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 10, \"stage\": \"loading\", \"message\": \"Video file loaded from NAS\" }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        160
+      ],
+      "id": "progress-10",
+      "name": "Progress 10%"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 20, \"stage\": \"transcription\", \"message\": \"Starting audio transcription (this may take several minutes)...\", \"eta_seconds\": 400 }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        160
+      ],
+      "id": "progress-20",
+      "name": "Progress 20%"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://whisperx:8000/transcribe-large",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "multipart/form-data"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "parameterType": "formData",
+              "name": "callback_url",
+              "value": "={{ $('Initialize Job').item.json.callback_url }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "job_id",
+              "value": "={{ $('Initialize Job').item.json.job_id }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 1800000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        160
+      ],
+      "id": "47914a0d-0610-4b04-b5e5-7e998ddace42",
+      "name": "Send to WhisperX"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 87, \"stage\": \"finalization\", \"message\": \"Transcription complete, processing results...\" }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        160
+      ],
+      "id": "progress-87",
+      "name": "Progress 87%"
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /nas/PeggysExtraStorage/videos-to-process/processed"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        160
+      ],
+      "id": "54641f7d-7d3e-464c-bdce-f8376c5e1339",
+      "name": "Create Directory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 88, \"stage\": \"finalization\", \"message\": \"Formatting transcription data...\" }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1488,
+        160
+      ],
+      "id": "progress-88",
+      "name": "Progress 88%"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get transcription data from HTTP Request response\nconst transcriptionData = $('Send to WhisperX').first().json;\n\n// Extract the first element if it's an array\nconst data = Array.isArray(transcriptionData) ? transcriptionData[0] : transcriptionData;\n\n// Get the original filename from the webhook input\nconst originalPath = $('Initialize Job').first().json.filepath;\nconst originalFilename = originalPath.split('/').pop();\n\n// Remove file extension and sanitize filename\nconst cleanFilename = originalFilename.replace(/\\.[^/.]+$/, '').replace(/[^a-zA-Z0-9-_]/g, '_');\n\n// Helper function to format time as HH:MM:SS,mmm\nfunction formatSRTTime(seconds) {\n  const hours = Math.floor(seconds / 3600);\n  const minutes = Math.floor((seconds % 3600) / 60);\n  const secs = Math.floor(seconds % 60);\n  const milliseconds = Math.floor((seconds % 1) * 1000);\n  \n  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;\n}\n\n// Generate plain text transcript\nlet plainText = '';\nif (data.segments) {\n  plainText = data.segments.map(seg => seg.text.trim()).join('\\n\\n');\n}\n\n// Generate SRT subtitle format\nlet srtContent = '';\nif (data.segments) {\n  data.segments.forEach((segment, index) => {\n    const startTime = formatSRTTime(segment.start);\n    const endTime = formatSRTTime(segment.end);\n    srtContent += `${index + 1}\\n${startTime} --> ${endTime}\\n${segment.text.trim()}\\n\\n`;\n  });\n}\n\n// Output single item with all content\nreturn [{\n  json: {\n    filename: cleanFilename,\n    txtContent: plainText,\n    srtContent: srtContent,\n    jsonContent: JSON.stringify(data, null, 2)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        160
+      ],
+      "id": "81440450-b296-4966-91e2-b6d8e57cbfad",
+      "name": "Process Transcription Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 90, \"stage\": \"finalization\", \"message\": \"Saving transcription files...\" }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1872,
+        160
+      ],
+      "id": "progress-90",
+      "name": "Progress 90%"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.txtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.txt`,\n      fileExtension: 'txt'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        0
+      ],
+      "id": "858339e3-0fe2-4aad-ad7f-49172285336e",
+      "name": "Prepare TXT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.srtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.srt`,\n      fileExtension: 'srt'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        160
+      ],
+      "id": "4f5accf6-002a-4836-9a5f-6da8404d8879",
+      "name": "Prepare SRT"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.jsonContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'application/json',\n      fileName: `${item.filename}.json`,\n      fileExtension: 'json'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        320
+      ],
+      "id": "a17a2191-f380-4d2e-b4a2-cfdd518be434",
+      "name": "Prepare JSON"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        0
+      ],
+      "id": "1c9f959b-4cc9-4d7a-89d9-7e55121bf707",
+      "name": "Save Plain Text"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.srt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        160
+      ],
+      "id": "2c532455-a1a3-4067-be3a-ce9b42ea27d0",
+      "name": "Save SRT Subtitles"
+    },
+    {
+      "parameters": {
+        "fileName": "=/nas/PeggysExtraStorage/videos-to-process/processed/{{ $json.filename }}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        320
+      ],
+      "id": "058de890-2cc3-4d10-8e2d-85b6c416a9fd",
+      "name": "Save JSON Timing"
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2448,
+        160
+      ],
+      "id": "52b73774-6da9-4c6d-a22e-c52f775dac26",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 95, \"stage\": \"finalization\", \"message\": \"Moving video file to processed folder...\" }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        160
+      ],
+      "id": "progress-95",
+      "name": "Progress 95%"
+    },
+    {
+      "parameters": {
+        "command": "=mv \"{{ $('Initialize Job').item.json.filepath }}\" \"/nas/PeggysExtraStorage/videos-to-process/processed/$(basename \"{{ $('Initialize Job').item.json.filepath }}\")\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        160
+      ],
+      "id": "move-video-file",
+      "name": "Move Video to Processed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Initialize Job').item.json.callback_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"complete\", \"progress\": 100, \"stage\": \"complete\", \"message\": \"Transcription completed successfully\", \"result\": { \"filename\": \"{{ $('Process Transcription Data').first().json.filename }}\", \"files\": { \"txt\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.txt\", \"srt\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.srt\", \"json\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.json\" } } }",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3024,
+        160
+      ],
+      "id": "progress-100",
+      "name": "Completion Callback"
+    }
+  ],
+  "connections": {
+    "List Processed Webhook": {
+      "main": [
+        [
+          {
+            "node": "List Processed Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Processed Files": {
+      "main": [
+        [
+          {
+            "node": "Parse Processed List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Processed List": {
+      "main": [
+        [
+          {
+            "node": "Return Processed List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Videos Webhook": {
+      "main": [
+        [
+          {
+            "node": "List Video Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Video Files": {
+      "main": [
+        [
+          {
+            "node": "Parse File List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse File List": {
+      "main": [
+        [
+          {
+            "node": "Return Video List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Video Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Job": {
+      "main": [
+        [
+          {
+            "node": "Respond with Job ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Video from NAS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Video from NAS": {
+      "main": [
+        [
+          {
+            "node": "Send to WhisperX",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Progress 10%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress 10%": {
+      "main": [
+        [
+          {
+            "node": "Progress 20%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to WhisperX": {
+      "main": [
+        [
+          {
+            "node": "Progress 87%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress 87%": {
+      "main": [
+        [
+          {
+            "node": "Create Directory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Directory": {
+      "main": [
+        [
+          {
+            "node": "Progress 88%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress 88%": {
+      "main": [
+        [
+          {
+            "node": "Process Transcription Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Transcription Data": {
+      "main": [
+        [
+          {
+            "node": "Progress 90%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress 90%": {
+      "main": [
+        [
+          {
+            "node": "Prepare TXT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare SRT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare TXT": {
+      "main": [
+        [
+          {
+            "node": "Save Plain Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SRT": {
+      "main": [
+        [
+          {
+            "node": "Save SRT Subtitles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare JSON": {
+      "main": [
+        [
+          {
+            "node": "Save JSON Timing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Plain Text": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save SRT Subtitles": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Save JSON Timing": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Progress 95%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Progress 95%": {
+      "main": [
+        [
+          {
+            "node": "Move Video to Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Video to Processed": {
+      "main": [
+        [
+          {
+            "node": "Completion Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "7939fbd6e912ad3349fcdc6e8512dbf38c0a7b1f27d1dba9deffc22f205128b7"
+  }
+}

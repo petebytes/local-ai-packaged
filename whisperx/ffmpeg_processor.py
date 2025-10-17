@@ -1,6 +1,6 @@
 """
 FFmpeg Video Processor for WhisperX
-Optimized for speech recognition with RTX 3090 hardware acceleration
+Optimized for speech recognition with RTX 5090 hardware acceleration (9th-gen NVENC/NVDEC)
 Based on 2025 best practices for audio extraction and enhancement
 """
 
@@ -20,7 +20,7 @@ class FFmpegProcessor:
 
     Features:
     - Speech-optimized audio extraction (16kHz mono)
-    - Hardware acceleration (NVENC for RTX 3090)
+    - Hardware acceleration (9th-gen NVENC/NVDEC for RTX 5090)
     - Speech enhancement filters
     - Memory-efficient streaming
     - Metadata extraction
@@ -329,11 +329,11 @@ class FFmpegProcessor:
             '-vf', f"subtitles='{subtitle_path_escaped}':force_style='FontSize={font_size},PrimaryColour={font_color}'"
         ])
 
-        # Hardware encoding with NVENC (RTX 3090)
+        # Hardware encoding with NVENC (RTX 5090's 9th-gen NVENC)
         if use_hw_accel and self.use_hw_accel:
             cmd.extend([
                 '-c:v', 'h264_nvenc',
-                '-preset', 'p4',  # Medium preset (balance speed/quality)
+                '-preset', 'p6',  # High quality preset (RTX 5090 9th-gen NVENC)
                 '-cq', '23',  # Constant quality
                 '-b:v', '0'  # Let CQ control bitrate
             ])
