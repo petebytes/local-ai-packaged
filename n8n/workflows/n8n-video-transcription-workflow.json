@@ -9,10 +9,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -80,
-        -256
+        -160,
+        432
       ],
-      "id": "d72d8458-bef9-41e8-ab2a-44ff3f8b1aee",
+      "id": "eef13f34-4c2d-4cc7-baf1-fb1bcc199785",
       "name": "List Videos Webhook",
       "webhookId": "list-videos-webhook-id"
     },
@@ -23,10 +23,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        128,
-        -256
+        48,
+        432
       ],
-      "id": "3d4225ed-7a8d-432f-8f4c-6fe3554fb373",
+      "id": "30646144-563e-4f27-87f6-6c1225eb65a1",
       "name": "List Video Files"
     },
     {
@@ -36,10 +36,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        -256
+        240,
+        432
       ],
-      "id": "9b7e8dc2-cdad-4a76-9cee-e6411cf7b238",
+      "id": "9d8245ca-4a61-4382-a1aa-c8b9cdf41f90",
       "name": "Parse File List"
     },
     {
@@ -51,10 +51,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        528,
-        -256
+        448,
+        432
       ],
-      "id": "ff81b752-004f-49a5-92be-5c11571a3993",
+      "id": "23862a0b-f89f-49c3-9cc7-dfd20c605b98",
       "name": "Return Video List"
     },
     {
@@ -66,10 +66,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -80,
-        -560
+        -160,
+        128
       ],
-      "id": "list-processed-webhook",
+      "id": "82bf0777-952f-4164-a456-c816d0140604",
       "name": "List Processed Webhook",
       "webhookId": "list-processed-webhook-id"
     },
@@ -80,10 +80,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        128,
-        -560
+        48,
+        128
       ],
-      "id": "list-processed-files",
+      "id": "5142e296-7d1f-41d0-8260-2dd1a1c35a6f",
       "name": "List Processed Files"
     },
     {
@@ -93,10 +93,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        -560
+        240,
+        128
       ],
-      "id": "parse-processed-list",
+      "id": "9d9c0227-daf8-4767-bce0-41980b4104af",
       "name": "Parse Processed List"
     },
     {
@@ -108,10 +108,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        528,
-        -560
+        448,
+        128
       ],
-      "id": "return-processed-list",
+      "id": "49d0d002-ad21-48e9-abed-c63caaabb4b5",
       "name": "Return Processed List"
     },
     {
@@ -124,10 +124,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -80,
-        48
+        -160,
+        736
       ],
-      "id": "7dcf4929-e249-4746-b2cf-852994fc3bc4",
+      "id": "02ebf8d1-68dd-44cf-a847-0ebfa7418e3d",
       "name": "Process Video Webhook",
       "webhookId": "process-video-webhook-id"
     },
@@ -138,10 +138,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        128,
-        48
+        48,
+        736
       ],
-      "id": "job-init-node",
+      "id": "3378f2d2-7f75-4954-8734-5b8eb8d6420e",
       "name": "Initialize Job"
     },
     {
@@ -153,10 +153,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        320,
-        -80
+        240,
+        608
       ],
-      "id": "respond-job-id",
+      "id": "8636d210-5881-45b4-9db1-e0da63d0f011",
       "name": "Respond with Job ID"
     },
     {
@@ -166,10 +166,10 @@
       "type": "n8n-nodes-base.readBinaryFile",
       "typeVersion": 1,
       "position": [
-        320,
-        160
+        240,
+        848
       ],
-      "id": "ebd290c3-cb00-4451-9d60-41afae15ae91",
+      "id": "6d73081d-aa6d-468f-a70c-17ad41523d6e",
       "name": "Read Video from NAS"
     },
     {
@@ -179,17 +179,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 10, \"stage\": \"loading\", \"message\": \"Video file loaded from NAS\" }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        528,
-        160
+        448,
+        848
       ],
-      "id": "progress-10",
+      "id": "ebb7596c-545c-4d04-81d3-a360c10ef087",
       "name": "Progress 10%"
     },
     {
@@ -199,17 +197,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 20, \"stage\": \"transcription\", \"message\": \"Starting audio transcription (this may take several minutes)...\", \"eta_seconds\": 400 }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        720,
-        160
+        640,
+        848
       ],
-      "id": "progress-20",
+      "id": "1fb74f58-857a-4363-8a2a-1c08ffc924ed",
       "name": "Progress 20%"
     },
     {
@@ -235,12 +231,10 @@
               "inputDataFieldName": "data"
             },
             {
-              "parameterType": "formData",
               "name": "callback_url",
               "value": "={{ $('Initialize Job').item.json.callback_url }}"
             },
             {
-              "parameterType": "formData",
               "name": "job_id",
               "value": "={{ $('Initialize Job').item.json.job_id }}"
             }
@@ -253,10 +247,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        912,
-        160
+        832,
+        848
       ],
-      "id": "47914a0d-0610-4b04-b5e5-7e998ddace42",
+      "id": "799e73d1-78ed-4724-a890-ff114a29e24e",
       "name": "Send to WhisperX"
     },
     {
@@ -266,17 +260,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 87, \"stage\": \"finalization\", \"message\": \"Transcription complete, processing results...\" }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1104,
-        160
+        1024,
+        848
       ],
-      "id": "progress-87",
+      "id": "d60236c9-9300-40d4-8923-45567a0160f6",
       "name": "Progress 87%"
     },
     {
@@ -286,10 +278,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1296,
-        160
+        1216,
+        848
       ],
-      "id": "54641f7d-7d3e-464c-bdce-f8376c5e1339",
+      "id": "92c76bad-9043-4999-b856-704c17356603",
       "name": "Create Directory"
     },
     {
@@ -299,17 +291,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 88, \"stage\": \"finalization\", \"message\": \"Formatting transcription data...\" }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1488,
-        160
+        1408,
+        848
       ],
-      "id": "progress-88",
+      "id": "ff0eb1b6-6707-4295-927d-061bf62cabaa",
       "name": "Progress 88%"
     },
     {
@@ -319,10 +309,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
-        160
+        1600,
+        848
       ],
-      "id": "81440450-b296-4966-91e2-b6d8e57cbfad",
+      "id": "f162f0d4-a941-4014-9f4c-c9db47af973e",
       "name": "Process Transcription Data"
     },
     {
@@ -332,56 +322,54 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 90, \"stage\": \"finalization\", \"message\": \"Saving transcription files...\" }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1872,
-        160
+        1792,
+        848
       ],
-      "id": "progress-90",
+      "id": "6d42c6b6-ccee-40ae-ab44-313c5f9a2014",
       "name": "Progress 90%"
     },
     {
       "parameters": {
-        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.txtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.txt`,\n      fileExtension: 'txt'\n    }\n  }\n}];"
+        "jsCode": "const item = $('Process Transcription Data').first().json;\nif (!item.txtContent) {\n  throw new Error('No TXT content found in transcription data');\n}\nconst buffer = Buffer.from(item.txtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.txt`,\n      fileExtension: 'txt'\n    }\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2064,
-        0
+        1984,
+        688
       ],
-      "id": "858339e3-0fe2-4aad-ad7f-49172285336e",
+      "id": "c0a095e3-bc33-45e2-a279-1d2bdd95e112",
       "name": "Prepare TXT"
     },
     {
       "parameters": {
-        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.srtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.srt`,\n      fileExtension: 'srt'\n    }\n  }\n}];"
+        "jsCode": "const item = $('Process Transcription Data').first().json;\nif (!item.srtContent) {\n  throw new Error('No SRT content found in transcription data');\n}\nconst buffer = Buffer.from(item.srtContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.filename}.srt`,\n      fileExtension: 'srt'\n    }\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2064,
-        160
+        1984,
+        848
       ],
-      "id": "4f5accf6-002a-4836-9a5f-6da8404d8879",
+      "id": "d8017c13-ac3b-4854-a9e9-dec90d42beaa",
       "name": "Prepare SRT"
     },
     {
       "parameters": {
-        "jsCode": "const item = $('Process Transcription Data').first().json;\nconst buffer = Buffer.from(item.jsonContent, 'utf-8');\nreturn [{\n  json: { filename: item.filename },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'application/json',\n      fileName: `${item.filename}.json`,\n      fileExtension: 'json'\n    }\n  }\n}];"
+        "jsCode": "const item = $('Process Transcription Data').first().json;\n// Verify we have JSON content\nif (!item.jsonContent) {\n  throw new Error('No JSON content found in transcription data');\n}\nconst buffer = Buffer.from(item.jsonContent, 'utf-8');\nreturn [{\n  json: { \n    filename: item.filename,\n    jsonSize: item.jsonContent.length \n  },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: 'application/json',\n      fileName: `${item.filename}.json`,\n      fileExtension: 'json'\n    }\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2064,
-        320
+        1984,
+        1008
       ],
-      "id": "a17a2191-f380-4d2e-b4a2-cfdd518be434",
+      "id": "d7d7c38e-1929-49e4-a2a1-5e1f181a3161",
       "name": "Prepare JSON"
     },
     {
@@ -392,10 +380,10 @@
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        2256,
-        0
+        2176,
+        688
       ],
-      "id": "1c9f959b-4cc9-4d7a-89d9-7e55121bf707",
+      "id": "6de3bc26-206a-49f6-9673-44fccb045efb",
       "name": "Save Plain Text"
     },
     {
@@ -406,10 +394,10 @@
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        2256,
-        160
+        2176,
+        848
       ],
-      "id": "2c532455-a1a3-4067-be3a-ce9b42ea27d0",
+      "id": "ba6f2f32-4b93-4a02-a0ea-c428955c5f88",
       "name": "Save SRT Subtitles"
     },
     {
@@ -420,24 +408,22 @@
       "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
-        2256,
-        320
+        2176,
+        1008
       ],
-      "id": "058de890-2cc3-4d10-8e2d-85b6c416a9fd",
+      "id": "40accd46-0c26-4283-95a4-596adb218c02",
       "name": "Save JSON Timing"
     },
     {
-      "parameters": {
-        "mode": "mergeByPosition"
-      },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
-        2448,
-        160
+        2368,
+        848
       ],
-      "id": "52b73774-6da9-4c6d-a22e-c52f775dac26",
-      "name": "Merge Results"
+      "id": "abc12345-6789-0def-1234-567890abcdef",
+      "name": "Wait for All Files"
     },
     {
       "parameters": {
@@ -446,30 +432,41 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"processing\", \"progress\": 95, \"stage\": \"finalization\", \"message\": \"Moving video file to processed folder...\" }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2640,
-        160
+        2560,
+        848
       ],
-      "id": "progress-95",
+      "id": "0c742386-6284-4b9a-b236-8a67ac31e821",
       "name": "Progress 95%"
     },
     {
       "parameters": {
-        "command": "=mv \"{{ $('Initialize Job').item.json.filepath }}\" \"/nas/PeggysExtraStorage/videos-to-process/processed/$(basename \"{{ $('Initialize Job').item.json.filepath }}\")\""
+        "jsCode": "const filepath = $('Initialize Job').item.json.filepath;\nconst filename = filepath.split('/').pop();\nconst destPath = `/nas/PeggysExtraStorage/videos-to-process/processed/${filename}`;\n\nreturn [{\n  json: {\n    source: filepath,\n    destination: destPath,\n    filename: filename\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        848
+      ],
+      "id": "7a8b9c0d-1234-5678-9abc-def012345678",
+      "name": "Calculate Move Paths"
+    },
+    {
+      "parameters": {
+        "command": "=mv \"{{ $json.source }}\" \"{{ $json.destination }}\""
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2832,
-        160
+        2944,
+        848
       ],
-      "id": "move-video-file",
+      "id": "550d7e1a-5653-43e3-aa0a-d4d0effebf11",
       "name": "Move Video to Processed"
     },
     {
@@ -479,54 +476,19 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"job_id\": \"{{ $('Initialize Job').item.json.job_id }}\", \"status\": \"complete\", \"progress\": 100, \"stage\": \"complete\", \"message\": \"Transcription completed successfully\", \"result\": { \"filename\": \"{{ $('Process Transcription Data').first().json.filename }}\", \"files\": { \"txt\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.txt\", \"srt\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.srt\", \"json\": \"/nas/PeggysExtraStorage/videos-to-process/processed/{{ $('Process Transcription Data').first().json.filename }}.json\" } } }",
-        "options": {
-          "ignoreResponseCode": true
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3024,
-        160
+        3136,
+        848
       ],
-      "id": "progress-100",
+      "id": "de014586-4978-4a39-8055-40b187837b2c",
       "name": "Completion Callback"
     }
   ],
   "connections": {
-    "List Processed Webhook": {
-      "main": [
-        [
-          {
-            "node": "List Processed Files",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "List Processed Files": {
-      "main": [
-        [
-          {
-            "node": "Parse Processed List",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Processed List": {
-      "main": [
-        [
-          {
-            "node": "Return Processed List",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "List Videos Webhook": {
       "main": [
         [
@@ -554,6 +516,39 @@
         [
           {
             "node": "Return Video List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Processed Webhook": {
+      "main": [
+        [
+          {
+            "node": "List Processed Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Processed Files": {
+      "main": [
+        [
+          {
+            "node": "Parse Processed List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Processed List": {
+      "main": [
+        [
+          {
+            "node": "Return Processed List",
             "type": "main",
             "index": 0
           }
@@ -727,7 +722,7 @@
       "main": [
         [
           {
-            "node": "Merge Results",
+            "node": "Wait for All Files",
             "type": "main",
             "index": 0
           }
@@ -738,9 +733,9 @@
       "main": [
         [
           {
-            "node": "Merge Results",
+            "node": "Wait for All Files",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -749,14 +744,14 @@
       "main": [
         [
           {
-            "node": "Merge Results",
+            "node": "Wait for All Files",
             "type": "main",
-            "index": 2
+            "index": 0
           }
         ]
       ]
     },
-    "Merge Results": {
+    "Wait for All Files": {
       "main": [
         [
           {
@@ -768,6 +763,17 @@
       ]
     },
     "Progress 95%": {
+      "main": [
+        [
+          {
+            "node": "Calculate Move Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Move Paths": {
       "main": [
         [
           {
@@ -792,6 +798,6 @@
   },
   "pinData": {},
   "meta": {
-    "instanceId": "7939fbd6e912ad3349fcdc6e8512dbf38c0a7b1f27d1dba9deffc22f205128b7"
+    "instanceId": "99ff97a0c56026a2c1b3a849547491eb857e68a0b770f2b7c6688eea83f57eda"
   }
 }

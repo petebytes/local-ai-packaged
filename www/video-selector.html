@@ -283,14 +283,6 @@
                         <p id="eta" class="text-xs text-slate-500"></p>
                     </div>
 
-                    <!-- Results Container -->
-                    <div id="resultsContainer" class="mt-6 p-4 bg-emerald-950/30 border border-emerald-700/50 rounded-lg hidden">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>
-                            <strong class="text-emerald-400 text-sm">Transcription Complete!</strong>
-                        </div>
-                        <ul id="resultsList" class="space-y-2"></ul>
-                    </div>
                 </div>
                 </div>
 
@@ -301,6 +293,15 @@
                             3
                         </div>
                         <h2 class="text-lg font-semibold text-slate-100">Download Results</h2>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="resultsContainer" class="ml-11 mb-6 p-4 bg-emerald-950/30 border border-emerald-700/50 rounded-lg hidden">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>
+                            <strong class="text-emerald-400 text-sm">Transcription Complete!</strong>
+                        </div>
+                        <ul id="resultsList" class="space-y-2"></ul>
                     </div>
 
                     <!-- Processed Videos Section -->
@@ -629,6 +630,7 @@
 
                 if (data.processed_videos && data.processed_videos.length > 0) {
                     processedVideosSection.classList.remove('hidden');
+                    processedVideosList.classList.remove('hidden');
                     noProcessedVideos.classList.add('hidden');
 
                     data.processed_videos.forEach(video => {
@@ -646,15 +648,15 @@
                                 </div>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.txt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                <a href="https://raven.lan/videos-to-process/processed/${encodeURIComponent(video.base_name)}.txt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
                                     <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                                     <span>TXT</span>
                                 </a>
-                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.srt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                <a href="https://raven.lan/videos-to-process/processed/${encodeURIComponent(video.base_name)}.srt" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
                                     <i data-lucide="subtitles" class="w-3.5 h-3.5"></i>
                                     <span>SRT</span>
                                 </a>
-                                <a href="/nas/PeggysExtraStorage/videos-to-process/processed/${escapeHtml(video.base_name)}.json" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
+                                <a href="https://raven.lan/videos-to-process/processed/${encodeURIComponent(video.base_name)}.json" download class="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 px-3 py-1.5 rounded transition-colors duration-200 border border-slate-600">
                                     <i data-lucide="code" class="w-3.5 h-3.5"></i>
                                     <span>JSON</span>
                                 </a>

@@ -67,6 +67,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./certs:/etc/nginx/certs:ro
       - ./www:/usr/share/nginx/html:ro
+      - /mnt/nas/PeggysExtraStorage/videos-to-process:/data/videos-to-process:ro
     networks:
       - localai_default
     # No depends_on - nginx should always be available even if backend services fail
