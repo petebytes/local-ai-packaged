@@ -616,7 +616,7 @@
             }
 
             try {
-                const response = await fetch('https://n8n.lan/webhook/list-processed', {
+                const response = await fetch('https://raven.lan/webhook/list-processed', {
                     method: 'GET'
                 });
 
@@ -833,7 +833,7 @@
                 });
 
                 // Send the request
-                xhr.open('POST', 'https://n8n.lan/webhook/upload-video', true);
+                xhr.open('POST', 'https://raven.lan/webhook/upload-video', true);
                 xhr.send(formData);
 
             } catch (error) {
@@ -924,7 +924,7 @@
             const startTime = Date.now();
 
             try {
-                const response = await fetch('https://n8n.lan/webhook/list-videos', {
+                const response = await fetch('https://raven.lan/webhook/list-videos', {
                     method: 'GET'
                 });
 
@@ -998,7 +998,7 @@
             const callbackUrl = 'http://progress-tracker:5555/api/progress-callback';
 
             try {
-                const response = await fetch('https://n8n.lan/webhook/process-video-file', {
+                const response = await fetch('https://raven.lan/webhook/process-video-file', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1082,6 +1082,9 @@
                 progressBar.style.width = '100%';
                 progressPercent.textContent = '100%';
                 progressContainer.setAttribute('aria-valuenow', '100');
+                progressStage.textContent = 'Complete';
+                progressMessage.textContent = '';
+                eta.textContent = '';
 
                 if (update.result && update.result.files) {
                     showResults(update.result);
